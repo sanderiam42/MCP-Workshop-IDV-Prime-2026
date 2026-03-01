@@ -2,9 +2,9 @@
 
 ## Context
 
-You are working on the repository at `https://github.com/sanderiam-astrix/MCP-Workshop-Astrix-Academy-2026` (or its fork at `https://github.com/sanderiam42/MCP-Workshop-IDV-Prime-2026`). Clone whichever is the working repo.
+You are working on the repository at `https://github.com/sanderiam42/MCP-Workshop-IDV-Prime-2026` (or its fork at `https://github.com/sanderiam42/MCP-Workshop-IDV-Prime-2026`). Clone whichever is the working repo.
 
-This is an MCP (Model Context Protocol) workshop lab. It currently uses Docker Compose to run three containers: Ollama (LLM, running `llama3.2:1b`), PostgreSQL (data), and a client container (`mcp-workshop-astrix-academy-2026-client-1`) running a fork of `https://github.com/ausboss/mcp-ollama-agent` — a TypeScript CLI chat agent that connects MCP servers to Ollama.
+This is an MCP (Model Context Protocol) workshop lab. It currently uses Docker Compose to run three containers: Ollama (LLM, running `llama3.2:1b`), PostgreSQL (data), and a client container (`mcp-workshop-idv-prime-2026-client-1`) running a fork of `https://github.com/ausboss/mcp-ollama-agent` — a TypeScript CLI chat agent that connects MCP servers to Ollama.
 
 The workshop currently has two MCP config file variants that students swap between:
 
@@ -399,7 +399,7 @@ Update the repo's `README.md`:
 
 ## Acceptance Criteria
 
-When complete, a student in the `mcp-workshop-astrix-academy-2026-client-1` container should be able to:
+When complete, a student in the `mcp-workshop-idv-prime-2026-client-1` container should be able to:
 
 1. Exit the current chat session
 2. Copy `OIDCTODO0.mcp-config.json` into place as `mcp-config.json`
