@@ -84,9 +84,9 @@ fi
 
 # --- Write token into .env.xaa (update the XAA_ID_TOKEN line) ---
 if grep -qE '^#?\s*XAA_ID_TOKEN=' "$ENV_FILE"; then
-  sed -i -E "s|^#?\s*XAA_ID_TOKEN=.*|XAA_ID_TOKEN=${ID_TOKEN}|" "$ENV_FILE"
+  sed -i -E "s|^#?\s*XAA_ID_TOKEN=.*|export XAA_ID_TOKEN=${ID_TOKEN}|" "$ENV_FILE"
 else
-  echo "XAA_ID_TOKEN=${ID_TOKEN}" >> "$ENV_FILE"
+  echo "export XAA_ID_TOKEN=${ID_TOKEN}" >> "$ENV_FILE"
 fi
 
 echo ""
