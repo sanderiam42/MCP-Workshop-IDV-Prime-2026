@@ -12,6 +12,9 @@ set -euo pipefail
 IDP_TOKEN_URL="https://idp.xaa.dev/token"
 IDP_AUTH_URL="https://idp.xaa.dev/authorize"
 
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+ENV_FILE="${SCRIPT_DIR}/.env.xaa"
+
 # --- Validate required env vars ---
 : "${XAA_CLIENT_ID:?XAA_CLIENT_ID is not set}"
 : "${XAA_CLIENT_SECRET:?XAA_CLIENT_SECRET is not set}"
@@ -78,11 +81,21 @@ if [[ -z "$ID_TOKEN" || "$ID_TOKEN" == "null" ]]; then
   exit 1
 fi
 
-# --- Write token to file for agent pickup ---
-echo "$ID_TOKEN" > /tmp/.xaa-id-token
+# --- Write token into .env.xaa (update the XAA_ID_TOKEN line) ---
+if grep -qE '^#?\s*XAA_ID_TOKEN=' "$ENV_FILE"; then
+  sed -i -E "s|^#?\s*XAA_ID_TOKEN=.*|XAA_ID_TOKEN=${ID_TOKEN}|" "$ENV_FILE"
+else
+  echo "XAA_ID_TOKEN=${ID_TOKEN}" >> "$ENV_FILE"
+fi
+
 echo ""
-echo "Success! id_token written to /tmp/.xaa-id-token"
+echo "============================================================"
+echo " Success! XAA_ID_TOKEN written to:"
+echo "   ${ENV_FILE}"
+echo "============================================================"
 echo ""
-echo "You can also export it manually:"
-echo "  export XAA_ID_TOKEN=${ID_TOKEN}"
+echo " Step 3: Source the env file to load all XAA vars, then start the agent:"
+echo ""
+echo "   source ../MCP-Workshop-IDV-Prime-2026/.env.xaa"
+echo "   npm start"
 echo ""
