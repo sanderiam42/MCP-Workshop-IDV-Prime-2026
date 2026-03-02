@@ -23,6 +23,7 @@ cp ../MCP-Workshop-IDV-Prime-2026/docker-compose-lab-mcp-config-files/OIDCTODO0.
 # Open the printed URL in your browser. Log in (any email — playground sends a code).
 # Browser will redirect to localhost and fail — that's expected.
 # Copy the code= value from the URL bar, paste it back in the terminal.
+source ../MCP-Workshop-IDV-Prime-2026/.env.xaa
 npm start
 What are my todos?
 How many todos have I completed?
