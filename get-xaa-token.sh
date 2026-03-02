@@ -17,6 +17,9 @@ IDP_AUTH_URL="https://idp.xaa.dev/authorize"
 : "${XAA_CLIENT_SECRET:?XAA_CLIENT_SECRET is not set}"
 : "${XAA_REDIRECT_URI:?XAA_REDIRECT_URI is not set}"
 
+# --- URL-encode helper (uses jq @uri — already required for token parsing) ---
+urlencode() { printf '%s' "$1" | jq -Rr @uri; }
+
 # --- Generate PKCE code_verifier (128 random chars, base64url) ---
 CODE_VERIFIER=$(openssl rand -base64 96 | tr -d '\n' | tr '+/' '-_' | tr -d '=')
 
@@ -31,7 +34,7 @@ CODE_CHALLENGE=$(printf '%s' "$CODE_VERIFIER" \
 STATE=$(openssl rand -hex 16)
 
 # --- Build authorization URL ---
-AUTH_URL="${IDP_AUTH_URL}?response_type=code&client_id=$(python3 -c "import urllib.parse,sys; print(urllib.parse.quote(sys.argv[1]))" "$XAA_CLIENT_ID")&redirect_uri=$(python3 -c "import urllib.parse,sys; print(urllib.parse.quote(sys.argv[1]))" "$XAA_REDIRECT_URI")&scope=openid%20email%20profile&state=${STATE}&code_challenge=${CODE_CHALLENGE}&code_challenge_method=S256"
+AUTH_URL="${IDP_AUTH_URL}?response_type=code&client_id=$(urlencode "$XAA_CLIENT_ID")&redirect_uri=$(urlencode "$XAA_REDIRECT_URI")&scope=openid%20email%20profile&state=${STATE}&code_challenge=${CODE_CHALLENGE}&code_challenge_method=S256"
 
 echo ""
 echo "============================================================"
