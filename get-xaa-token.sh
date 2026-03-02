@@ -12,8 +12,9 @@ set -euo pipefail
 IDP_TOKEN_URL="https://idp.xaa.dev/token"
 IDP_AUTH_URL="https://idp.xaa.dev/authorize"
 
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-ENV_FILE="${SCRIPT_DIR}/.env.xaa"
+#### hard coding this for the lab for now. no need to be fancy
+# SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+ENV_FILE="../MCP-Workshop-IDV-Prime-2026/.env.xaa"
 
 # --- Validate required env vars ---
 : "${XAA_CLIENT_ID:?XAA_CLIENT_ID is not set}"
