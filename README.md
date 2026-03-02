@@ -26,7 +26,7 @@ Set up your own lab environment. Three sub-options are available:
 ## Repository Structure
 
 ### Main Directory Files
-The files in the main directory (`docker-compose.yml`, `pg-init/`, `pull-ollama-model.sh`, `get-xaa-token.sh`, `.env.xaa.example`) are used by both:
+The files in the main directory (`docker-compose.yml`, `pg-init/`, `pull-ollama-model.sh`, `get-xaa-token.sh`, `.env.xaa`) are used by both:
 - Astrix-supplied labs (hosted Docker Compose environment)
 - BYO Docker Compose labs
 
@@ -49,6 +49,6 @@ The `claude-desktop-lab-mcp-config-files/` directory contains `WORKING` and `SEC
 ### XAA/OIDC Prerequisites (OIDCTODO0 step)
 - Requires outbound HTTPS access to `idp.xaa.dev`, `auth.resource.xaa.dev`, and `mcp.xaa.dev`
 - Requires one-time prep-team registration at `xaa.dev/developer/register` to obtain client credentials
-- See `.env.xaa.example` for the env vars that must be set before running `get-xaa-token.sh`
+- `.env.xaa` is pre-populated with workshop credentials and committed to the repo — no student action required; vars are loaded automatically via Docker Compose `env_file`
 
 NOTE: DO NOT USE ANY OF THE DOCKER IMAGES IN A PRODUCTION SETTING. These have been built with the express purpose of demonstrating an insecure, bad state configuration. There is no data worth stealing in them right now, but if you put some there, you're asking for trouble!
