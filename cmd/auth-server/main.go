@@ -1,0 +1,32 @@
+package main
+
+import (
+	"log"
+	"net/http"
+	"os"
+
+	"xaa-mcp-demo/internal/authserver"
+)
+
+func main() {
+	port := envOrDefault("PORT", "8081")
+	dataDir := envOrDefault("DATA_DIR", "./data")
+	issuer := envOrDefault("AUTH_SERVER_ISSUER", "http://localhost:8081")
+
+	service, err := authserver.NewService(dataDir, issuer)
+	if err != nil {
+		log.Fatalf("create auth server: %v", err)
+	}
+
+	log.Printf("auth server listening on :%s", port)
+	if err := http.ListenAndServe(":"+port, service.Handler()); err != nil {
+		log.Fatalf("listen: %v", err)
+	}
+}
+
+func envOrDefault(key, fallback string) string {
+	if value := os.Getenv(key); value != "" {
+		return value
+	}
+	return fallback
+}

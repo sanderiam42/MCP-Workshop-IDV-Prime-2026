@@ -1,0 +1,263 @@
+:root {
+  color-scheme: dark;
+  font-family:
+    Inter,
+    ui-sans-serif,
+    system-ui,
+    -apple-system,
+    BlinkMacSystemFont,
+    "Segoe UI",
+    sans-serif;
+  background: #08111f;
+  color: #e8edf5;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  background:
+    radial-gradient(circle at top left, rgba(52, 117, 255, 0.18), transparent 30%),
+    radial-gradient(circle at top right, rgba(56, 189, 149, 0.16), transparent 24%),
+    #08111f;
+}
+
+button,
+input,
+select {
+  font: inherit;
+}
+
+button {
+  border: 0;
+  border-radius: 10px;
+  padding: 0.75rem 1rem;
+  background: #2c69ff;
+  color: white;
+  cursor: pointer;
+}
+
+button:disabled {
+  opacity: 0.65;
+  cursor: not-allowed;
+}
+
+input,
+select {
+  width: 100%;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 10px;
+  background: rgba(8, 17, 31, 0.7);
+  color: inherit;
+  padding: 0.75rem;
+}
+
+pre,
+code {
+  font-family:
+    "SFMono-Regular",
+    ui-monospace,
+    SFMono-Regular,
+    Menlo,
+    Monaco,
+    Consolas,
+    "Liberation Mono",
+    monospace;
+}
+
+.app-shell {
+  max-width: 1600px;
+  margin: 0 auto;
+  padding: 2rem;
+}
+
+.hero {
+  display: flex;
+  justify-content: space-between;
+  gap: 1.5rem;
+  align-items: flex-start;
+  margin-bottom: 1.5rem;
+}
+
+.eyebrow {
+  margin: 0;
+  text-transform: uppercase;
+  letter-spacing: 0.16em;
+  font-size: 0.8rem;
+  color: #76a7ff;
+}
+
+.hero h1 {
+  margin: 0.5rem 0;
+  font-size: 2.5rem;
+}
+
+.hero__copy {
+  max-width: 65rem;
+  margin: 0;
+  color: #b8c2d1;
+  line-height: 1.6;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1rem;
+}
+
+.panel {
+  background: rgba(10, 18, 35, 0.88);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 18px;
+  padding: 1rem 1.25rem;
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.24);
+}
+
+.panel__header h2 {
+  margin: 0 0 0.25rem;
+  font-size: 1.2rem;
+}
+
+.panel__header p,
+.muted {
+  margin: 0;
+  color: #a5afbf;
+}
+
+.panel__body {
+  margin-top: 1rem;
+}
+
+.form-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.75rem;
+  margin-bottom: 0.75rem;
+}
+
+.form-grid label {
+  display: grid;
+  gap: 0.4rem;
+  color: #d3dbeb;
+}
+
+.button-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  margin-bottom: 0.75rem;
+}
+
+.error-banner {
+  background: rgba(127, 29, 29, 0.55);
+  border: 1px solid rgba(248, 113, 113, 0.4);
+  border-radius: 14px;
+  padding: 0.85rem 1rem;
+  margin-bottom: 1rem;
+  white-space: pre-wrap;
+}
+
+.trace {
+  display: grid;
+  gap: 1rem;
+}
+
+.trace__summary {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 0.75rem;
+}
+
+.trace__summary div {
+  display: grid;
+  gap: 0.2rem;
+  padding: 0.75rem;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.trace__tokens {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.trace__token,
+.trace__step {
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.04);
+  padding: 0.85rem;
+}
+
+.trace__token summary,
+.trace__step-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  align-items: center;
+}
+
+.trace__steps {
+  display: grid;
+  gap: 0.75rem;
+  list-style: decimal;
+  padding-left: 1.5rem;
+}
+
+.trace__step code {
+  display: block;
+  margin-top: 0.5rem;
+  white-space: pre-wrap;
+}
+
+.code-block,
+.panel pre,
+.trace pre {
+  overflow: auto;
+  white-space: pre-wrap;
+  word-break: break-word;
+  background: rgba(3, 8, 17, 0.8);
+  border-radius: 12px;
+  padding: 0.85rem;
+  max-height: 24rem;
+}
+
+.code-block {
+  position: relative;
+  padding-top: 2.75rem;
+}
+
+.code-block pre {
+  margin: 0;
+  background: transparent;
+  padding: 0;
+  max-height: none;
+}
+
+.code-block__copy {
+  position: absolute;
+  top: 0.75rem;
+  right: 0.75rem;
+  padding: 0.45rem 0.7rem;
+  font-size: 0.85rem;
+}
+
+hr {
+  border: 0;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  margin: 1rem 0;
+}
+
+@media (max-width: 1100px) {
+  .grid,
+  .form-grid,
+  .trace__summary {
+    grid-template-columns: 1fr;
+  }
+
+  .hero {
+    flex-direction: column;
+  }
+}
