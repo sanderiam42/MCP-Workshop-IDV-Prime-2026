@@ -13,7 +13,7 @@ import (
 func TestHandleMCPRejectsUnknownResourceURI(t *testing.T) {
 	t.Parallel()
 
-	service, err := NewService(t.TempDir(), "http://resource.example", "http://auth.example", "http://auth.example/oauth/jwks.json")
+	service, err := NewService(t.TempDir(), "http://resource.example", "http://auth.example", "http://auth.example/oauth/jwks.json", nil)
 	if err != nil {
 		t.Fatalf("new service: %v", err)
 	}
@@ -59,7 +59,7 @@ func TestHandleMCPRejectsUnknownResourceURI(t *testing.T) {
 func TestHandleMCPRequiresWriteScopeForMutations(t *testing.T) {
 	t.Parallel()
 
-	service, err := NewService(t.TempDir(), "http://resource.example", "http://auth.example", "http://auth.example/oauth/jwks.json")
+	service, err := NewService(t.TempDir(), "http://resource.example", "http://auth.example", "http://auth.example/oauth/jwks.json", nil)
 	if err != nil {
 		t.Fatalf("new service: %v", err)
 	}

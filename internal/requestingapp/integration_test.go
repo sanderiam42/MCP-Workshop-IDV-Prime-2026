@@ -9,15 +9,26 @@ import (
 
 	"xaa-mcp-demo/internal/authserver"
 	"xaa-mcp-demo/internal/resourceserver"
+	"xaa-mcp-demo/internal/shared/debuglog"
 )
+
+func noopLogger(t *testing.T) *debuglog.Logger {
+	t.Helper()
+	logger, err := debuglog.New("test", false, "")
+	if err != nil {
+		t.Fatalf("create noop logger: %v", err)
+	}
+	return logger
+}
 
 func TestEndToEndBrowserAndHostBridge(t *testing.T) {
 	t.Helper()
 
 	baseDir := t.TempDir()
+	logger := noopLogger(t)
 
 	authAddr, authClose := startServer(t, func(addr string) http.Handler {
-		service, err := authserver.NewService(baseDir+"/auth", addr)
+		service, err := authserver.NewService(baseDir+"/auth", addr, logger)
 		if err != nil {
 			t.Fatalf("create auth service: %v", err)
 		}
@@ -26,7 +37,7 @@ func TestEndToEndBrowserAndHostBridge(t *testing.T) {
 	defer authClose()
 
 	resourceAddr, resourceClose := startServer(t, func(addr string) http.Handler {
-		service, err := resourceserver.NewService(baseDir+"/resource", addr, authAddr, authAddr+"/oauth/jwks.json")
+		service, err := resourceserver.NewService(baseDir+"/resource", addr, authAddr, authAddr+"/oauth/jwks.json", logger)
 		if err != nil {
 			t.Fatalf("create resource service: %v", err)
 		}
@@ -35,7 +46,7 @@ func TestEndToEndBrowserAndHostBridge(t *testing.T) {
 	defer resourceClose()
 
 	requestingAddr, requestingClose := startServer(t, func(addr string) http.Handler {
-		service := NewService(baseDir+"/requesting", t.TempDir(), addr, authAddr, authAddr, resourceAddr, resourceAddr)
+		service := NewService(baseDir+"/requesting", t.TempDir(), addr, authAddr, authAddr, resourceAddr, resourceAddr, logger)
 		return service.Handler()
 	})
 	defer requestingClose()
@@ -127,6 +138,115 @@ func TestEndToEndBrowserAndHostBridge(t *testing.T) {
 	todos := structured["todos"].([]any)
 	if len(todos) < 2 {
 		t.Fatalf("expected todos created through browser and host flows, got %v", todos)
+	}
+}
+
+func TestEndToEndClientCredentials(t *testing.T) {
+	t.Helper()
+
+	baseDir := t.TempDir()
+	logger := noopLogger(t)
+
+	authAddr, authClose := startServer(t, func(addr string) http.Handler {
+		service, err := authserver.NewService(baseDir+"/auth", addr, logger)
+		if err != nil {
+			t.Fatalf("create auth service: %v", err)
+		}
+		return service.Handler()
+	})
+	defer authClose()
+
+	resourceAddr, resourceClose := startServer(t, func(addr string) http.Handler {
+		service, err := resourceserver.NewService(baseDir+"/resource", addr, authAddr, authAddr+"/oauth/jwks.json", logger)
+		if err != nil {
+			t.Fatalf("create resource service: %v", err)
+		}
+		return service.Handler()
+	})
+	defer resourceClose()
+
+	requestingAddr, requestingClose := startServer(t, func(addr string) http.Handler {
+		service := NewService(baseDir+"/requesting", t.TempDir(), addr, authAddr, authAddr, resourceAddr, resourceAddr, logger)
+		return service.Handler()
+	})
+	defer requestingClose()
+
+	// Use the pre-seeded demo-requesting-app / demo-requesting-secret client credentials.
+	// No user enrollment needed for client credentials flow.
+
+	addResult := postRPC(t, requestingAddr+"/host/mcp", map[string]string{
+		"X-Demo-Client":        "demo-requesting-app",
+		"X-Demo-Client-Secret": "demo-requesting-secret",
+	}, map[string]any{
+		"jsonrpc": "2.0",
+		"id":      1,
+		"method":  "tools/call",
+		"params": map[string]any{
+			"name": "add_todo",
+			"arguments": map[string]any{
+				"text": "hello from machine",
+			},
+		},
+	})
+	addPayload := addResult["result"].(map[string]any)
+	if addPayload["isError"] == true {
+		t.Fatalf("expected successful CC add_todo, got %v", addResult)
+	}
+
+	listResult := postRPC(t, requestingAddr+"/host/mcp", map[string]string{
+		"X-Demo-Client":        "demo-requesting-app",
+		"X-Demo-Client-Secret": "demo-requesting-secret",
+	}, map[string]any{
+		"jsonrpc": "2.0",
+		"id":      2,
+		"method":  "tools/call",
+		"params": map[string]any{
+			"name":      "list_todos",
+			"arguments": map[string]any{},
+		},
+	})
+	listPayload := listResult["result"].(map[string]any)
+	if listPayload["isError"] == true {
+		t.Fatalf("expected successful CC list_todos, got %v", listResult)
+	}
+
+	// Verify the trace has cc_id_jag and no id_token.
+	traceResult := postRPC(t, requestingAddr+"/host/mcp", map[string]string{
+		"X-Demo-Client":        "demo-requesting-app",
+		"X-Demo-Client-Secret": "demo-requesting-secret",
+	}, map[string]any{
+		"jsonrpc": "2.0",
+		"id":      3,
+		"method":  "resources/read",
+		"params":  map[string]any{"uri": "trace://latest"},
+	})
+	traceContents, _ := traceResult["result"].(map[string]any)
+	contents, _ := traceContents["contents"].([]any)
+	if len(contents) == 0 {
+		t.Fatalf("expected trace contents, got %v", traceResult)
+	}
+
+	// Browser-triggered CC flow verification via /api/flow/run.
+	ccFlow := postJSON(t, requestingAddr+"/api/flow/run", map[string]any{
+		"client_id":     "demo-requesting-app",
+		"client_secret": "demo-requesting-secret",
+		"tool_name":     "list_todos",
+		"arguments":     map[string]any{},
+	}, http.StatusOK)
+
+	if ccFlow["error"] != nil && ccFlow["error"] != "" {
+		t.Fatalf("CC browser flow failed: %v", ccFlow["error"])
+	}
+
+	ccTokens, ok := ccFlow["tokens"].(map[string]any)
+	if !ok {
+		t.Fatalf("expected tokens in CC flow, got %v", ccFlow["tokens"])
+	}
+	if _, has := ccTokens["cc_id_jag"]; !has {
+		t.Fatalf("CC flow must have cc_id_jag token, got %v", ccTokens)
+	}
+	if _, has := ccTokens["id_token"]; has {
+		t.Fatalf("CC flow must not have id_token, got %v", ccTokens)
 	}
 }
 

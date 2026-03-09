@@ -6,14 +6,22 @@ import (
 	"os"
 
 	"xaa-mcp-demo/internal/authserver"
+	"xaa-mcp-demo/internal/shared/debuglog"
 )
 
 func main() {
 	port := envOrDefault("PORT", "8081")
 	dataDir := envOrDefault("DATA_DIR", "./data")
 	issuer := envOrDefault("AUTH_SERVER_ISSUER", "http://localhost:8081")
+	verbose := envOrDefault("VERBOSE", "") == "true"
+	logFile := envOrDefault("LOG_FILE", "")
 
-	service, err := authserver.NewService(dataDir, issuer)
+	logger, err := debuglog.New("auth-server", verbose, logFile)
+	if err != nil {
+		log.Fatalf("create logger: %v", err)
+	}
+
+	service, err := authserver.NewService(dataDir, issuer, logger)
 	if err != nil {
 		log.Fatalf("create auth server: %v", err)
 	}

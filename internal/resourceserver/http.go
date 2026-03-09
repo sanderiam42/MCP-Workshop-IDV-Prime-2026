@@ -9,6 +9,7 @@ import (
 	"sync"
 	"time"
 
+	"xaa-mcp-demo/internal/shared/debuglog"
 	"xaa-mcp-demo/internal/shared/jose"
 )
 
@@ -22,12 +23,17 @@ type Service struct {
 	httpClient  *http.Client
 	authKeyMu   sync.RWMutex
 	authKey     *rsa.PublicKey
+	logger      *debuglog.Logger
 }
 
-func NewService(dataDir string, issuer string, authIssuer string, authJWKSURL string) (*Service, error) {
+func NewService(dataDir string, issuer string, authIssuer string, authJWKSURL string, logger *debuglog.Logger) (*Service, error) {
 	keys, err := jose.LoadOrCreateRSAKey(filepath.Join(dataDir, "resource-signing-key.pem"))
 	if err != nil {
 		return nil, err
+	}
+
+	if logger == nil {
+		logger, _ = debuglog.New("resource-server", false, "")
 	}
 
 	return &Service{
@@ -40,6 +46,7 @@ func NewService(dataDir string, issuer string, authIssuer string, authJWKSURL st
 		httpClient: &http.Client{
 			Timeout: 10 * time.Second,
 		},
+		logger: logger,
 	}, nil
 }
 
@@ -56,7 +63,7 @@ func (s *Service) Handler() http.Handler {
 	mux.HandleFunc("/api/clients", s.handleClients)
 	mux.HandleFunc("/api/clients/", s.handleClientByID)
 	mux.HandleFunc("/api/debug/state", s.handleDebugState)
-	return withHeaders(mux)
+	return debuglog.Middleware(s.logger, withHeaders(mux))
 }
 
 func (s *Service) handleHealthz(w http.ResponseWriter, r *http.Request) {

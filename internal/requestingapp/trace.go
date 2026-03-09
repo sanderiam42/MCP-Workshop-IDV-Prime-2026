@@ -25,7 +25,7 @@ func BuildSnippets(userEmail, clientID string) map[string]string {
 
 	cursorConfig := map[string]any{
 		"mcpServers": map[string]any{
-			"xaa-demo": map[string]any{
+			"xaa-demo-user": map[string]any{
 				"url": "http://localhost:3000/host/mcp",
 				"headers": map[string]string{
 					"X-Demo-User":   userEmail,
@@ -37,13 +37,33 @@ func BuildSnippets(userEmail, clientID string) map[string]string {
 
 	cursorJSON, _ := json.MarshalIndent(cursorConfig, "", "  ")
 	codexTOML := fmt.Sprintf(
-		"[mcp_servers.xaa_demo]\nurl = \"http://localhost:3000/host/mcp\"\nhttp_headers = { \"X-Demo-User\" = \"%s\", \"X-Demo-Client\" = \"%s\" }\n",
+		"[mcp_servers.xaa_demo_user]\nurl = \"http://localhost:3000/host/mcp\"\nhttp_headers = { \"X-Demo-User\" = \"%s\", \"X-Demo-Client\" = \"%s\" }\n",
 		userEmail,
 		clientID,
 	)
 
+	cursorCCConfig := map[string]any{
+		"mcpServers": map[string]any{
+			"xaa-demo-machine": map[string]any{
+				"url": "http://localhost:3000/host/mcp",
+				"headers": map[string]string{
+					"X-Demo-Client":        demo.DefaultClientID,
+					"X-Demo-Client-Secret": demo.DefaultClientSecret,
+				},
+			},
+		},
+	}
+	cursorCCJSON, _ := json.MarshalIndent(cursorCCConfig, "", "  ")
+	codexCCTOML := fmt.Sprintf(
+		"[mcp_servers.xaa_demo_machine]\nurl = \"http://localhost:3000/host/mcp\"\nhttp_headers = { \"X-Demo-Client\" = \"%s\", \"X-Demo-Client-Secret\" = \"%s\" }\n",
+		demo.DefaultClientID,
+		demo.DefaultClientSecret,
+	)
+
 	return map[string]string{
-		"cursor": string(cursorJSON),
-		"codex":  codexTOML,
+		"cursor":    string(cursorJSON),
+		"codex":     codexTOML,
+		"cursor_cc": string(cursorCCJSON),
+		"codex_cc":  codexCCTOML,
 	}
 }

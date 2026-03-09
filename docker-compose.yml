@@ -7,6 +7,8 @@ services:
       PORT: "8081"
       DATA_DIR: /app/data
       AUTH_SERVER_ISSUER: http://localhost:8081
+      # - VERBOSE=true
+      # - LOG_FILE=/data/debug.log
     ports:
       - "8081:8081"
     volumes:
@@ -22,6 +24,8 @@ services:
       RESOURCE_SERVER_ISSUER: http://localhost:8082
       AUTH_SERVER_ISSUER: http://localhost:8081
       AUTH_SERVER_JWKS_URL: http://auth-server:8081/oauth/jwks.json
+      # - VERBOSE=true
+      # - LOG_FILE=/data/debug.log
     ports:
       - "8082:8082"
     depends_on:
@@ -42,6 +46,8 @@ services:
       AUTH_SERVER_INTERNAL_URL: http://auth-server:8081
       RESOURCE_SERVER_ISSUER: http://localhost:8082
       RESOURCE_SERVER_INTERNAL_URL: http://resource-server:8082
+      # - VERBOSE=true
+      # - LOG_FILE=/data/debug.log
     ports:
       - "3000:3000"
     depends_on:

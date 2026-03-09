@@ -8,6 +8,7 @@ import (
 
 	"xaa-mcp-demo/internal/shared/demo"
 	"xaa-mcp-demo/internal/shared/mcp"
+	"xaa-mcp-demo/internal/shared/trace"
 )
 
 func (s *Service) handleHostMCP(w http.ResponseWriter, r *http.Request) {
@@ -73,17 +74,27 @@ func (s *Service) handleHostMCP(w http.ResponseWriter, r *http.Request) {
 			s.writeRPCResponse(w, http.StatusOK, mcp.Error(request.ID, -32602, "invalid tools/call params", nil))
 			return
 		}
-		userEmail, clientID, err := bridgeContext(r)
+		userEmail, clientID, clientSecret, useClientCredentials, err := bridgeContext(r)
 		if err != nil {
 			s.writeRPCResponse(w, http.StatusOK, mcp.Success(request.ID, errorToolResult(err)))
 			return
 		}
-		flow, err := s.runner.Run(r.Context(), "host", FlowInput{
-			UserEmail: userEmail,
-			ClientID:  clientID,
-			ToolName:  params.Name,
-			Arguments: params.Arguments,
-		})
+		var flow trace.Flow
+		if useClientCredentials {
+			flow, err = s.runner.RunClientCredentials(r.Context(), "host", FlowInput{
+				ClientID:     clientID,
+				ClientSecret: clientSecret,
+				ToolName:     params.Name,
+				Arguments:    params.Arguments,
+			})
+		} else {
+			flow, err = s.runner.Run(r.Context(), "host", FlowInput{
+				UserEmail: userEmail,
+				ClientID:  clientID,
+				ToolName:  params.Name,
+				Arguments: params.Arguments,
+			})
+		}
 		_ = s.store.SaveFlow(flow)
 		if err != nil {
 			s.writeRPCResponse(w, http.StatusOK, mcp.Success(request.ID, errorToolResult(err)))
@@ -167,16 +178,22 @@ func bridgeResources() []mcp.Resource {
 	}
 }
 
-func bridgeContext(r *http.Request) (string, string, error) {
-	userEmail := strings.TrimSpace(r.Header.Get("X-Demo-User"))
-	clientID := strings.TrimSpace(r.Header.Get("X-Demo-Client"))
+func bridgeContext(r *http.Request) (userEmail, clientID, clientSecret string, useClientCredentials bool, err error) {
+	userEmail = strings.TrimSpace(r.Header.Get("X-Demo-User"))
+	clientID = strings.TrimSpace(r.Header.Get("X-Demo-Client"))
+	clientSecret = strings.TrimSpace(r.Header.Get("X-Demo-Client-Secret"))
 	if clientID == "" {
 		clientID = demo.DefaultClientID
 	}
-	if userEmail == "" {
-		return "", "", errors.New("X-Demo-User header is required for host-triggered tool calls")
+	if clientSecret != "" && userEmail == "" {
+		useClientCredentials = true
+		return
 	}
-	return userEmail, clientID, nil
+	if userEmail != "" {
+		return
+	}
+	err = errors.New("X-Demo-User or X-Demo-Client-Secret header is required for host-triggered tool calls")
+	return
 }
 
 func errorToolResult(err error) map[string]any {

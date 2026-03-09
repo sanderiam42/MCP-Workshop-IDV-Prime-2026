@@ -1,3 +1,7 @@
-[mcp_servers.xaa_demo]
+[mcp_servers.xaa_demo_user]
 url = "http://localhost:3000/host/mcp"
 http_headers = { "X-Demo-User" = "alice@example.com", "X-Demo-Client" = "demo-requesting-app" }
+
+[mcp_servers.xaa_demo_machine]
+url = "http://localhost:3000/host/mcp"
+http_headers = { "X-Demo-Client" = "demo-requesting-app", "X-Demo-Client-Secret" = "demo-requesting-secret" }

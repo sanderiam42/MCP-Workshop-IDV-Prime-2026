@@ -11,6 +11,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	"xaa-mcp-demo/internal/shared/debuglog"
 	"xaa-mcp-demo/internal/shared/demo"
 )
 
@@ -19,14 +20,19 @@ type Service struct {
 	webDir     string
 	store      *Store
 	runner     *Runner
+	logger     *debuglog.Logger
 }
 
-func NewService(dataDir, webDir, publicBase, authPublicBase, authInternalBase, resourcePublicBase, resourceInternalBase string) *Service {
+func NewService(dataDir, webDir, publicBase, authPublicBase, authInternalBase, resourcePublicBase, resourceInternalBase string, logger *debuglog.Logger) *Service {
+	if logger == nil {
+		logger, _ = debuglog.New("requesting-app", false, "")
+	}
 	return &Service{
 		publicBase: strings.TrimRight(publicBase, "/"),
 		webDir:     webDir,
 		store:      NewStore(dataDir),
-		runner:     NewRunner(authPublicBase, authInternalBase, resourcePublicBase, resourceInternalBase),
+		runner:     NewRunner(authPublicBase, authInternalBase, resourcePublicBase, resourceInternalBase, logger),
+		logger:     logger,
 	}
 }
 
@@ -39,7 +45,7 @@ func (s *Service) Handler() http.Handler {
 	mux.HandleFunc("/api/flow/run", s.handleRunFlow)
 	mux.HandleFunc("/host/mcp", s.handleHostMCP)
 	mux.Handle("/", s.handleStatic())
-	return withHeaders(mux)
+	return debuglog.Middleware(s.logger, withHeaders(mux))
 }
 
 func (s *Service) handleHealthz(w http.ResponseWriter, r *http.Request) {
@@ -155,9 +161,12 @@ func (s *Service) handleCreateClient(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Return the generated secret once — it is not retrievable again after this point.
 	s.writeJSON(w, http.StatusCreated, map[string]any{
-		"auth":     sanitizeSecrets(authBody),
-		"resource": sanitizeSecrets(resourceBody),
+		"client_id":     clientPayload["id"],
+		"client_secret": clientPayload["secret"],
+		"auth":          sanitizeSecrets(authBody),
+		"resource":      sanitizeSecrets(resourceBody),
 	})
 }
 
@@ -176,8 +185,19 @@ func (s *Service) handleRunFlow(w http.ResponseWriter, r *http.Request) {
 		input.ClientID = demo.DefaultClientID
 	}
 
-	flow, err := s.runner.Run(r.Context(), "browser", input)
-	_ = s.store.SaveFlow(flow)
+	var (
+		flow interface{}
+		err  error
+	)
+	if input.ClientSecret != "" && input.UserEmail == "" {
+		f, e := s.runner.RunClientCredentials(r.Context(), "browser", input)
+		_ = s.store.SaveFlow(f)
+		flow, err = f, e
+	} else {
+		f, e := s.runner.Run(r.Context(), "browser", input)
+		_ = s.store.SaveFlow(f)
+		flow, err = f, e
+	}
 	if err != nil {
 		s.writeJSON(w, http.StatusBadRequest, flow)
 		return

@@ -32,6 +32,7 @@ func (s *Service) handleOIDCMetadata(w http.ResponseWriter, r *http.Request) {
 		"grant_types_supported": []string{
 			grantTypeAuthorizationCode,
 			grantTypeTokenExchange,
+			grantTypeClientCredentials,
 		},
 		"token_endpoint_auth_methods_supported": []string{
 			"client_secret_basic",
@@ -161,6 +162,8 @@ func (s *Service) handleToken(w http.ResponseWriter, r *http.Request) {
 		s.handleAuthorizationCodeGrant(w, r, client)
 	case grantTypeTokenExchange:
 		s.handleTokenExchangeGrant(w, r, client)
+	case grantTypeClientCredentials:
+		s.handleClientCredentialsGrant(w, r, client)
 	default:
 		s.writeOAuthError(w, http.StatusBadRequest, "unsupported_grant_type", "grant type is not supported")
 	}
@@ -251,6 +254,35 @@ func (s *Service) handleTokenExchangeGrant(w http.ResponseWriter, r *http.Reques
 	}
 
 	s.recordTokenEvent("id_jag", userEmail, client.ID, audience, resource, scope, idJag, claims, expiresAt)
+	s.writeJSON(w, http.StatusOK, tokenResponse{
+		AccessToken:     idJag,
+		TokenType:       "N_A",
+		ExpiresIn:       int64(time.Until(expiresAt).Seconds()),
+		Scope:           scope,
+		IssuedTokenType: idJagTokenType,
+	})
+}
+
+func (s *Service) handleClientCredentialsGrant(w http.ResponseWriter, r *http.Request, client DemoClient) {
+	audience := strings.TrimSpace(r.Form.Get("audience"))
+	resource := strings.TrimSpace(r.Form.Get("resource"))
+	scope, err := normalizeMCPScopes(r.Form.Get("scope"))
+	if err != nil {
+		s.writeOAuthError(w, http.StatusBadRequest, "invalid_scope", err.Error())
+		return
+	}
+	if audience == "" || resource == "" {
+		s.writeOAuthError(w, http.StatusBadRequest, "invalid_request", "audience and resource are required")
+		return
+	}
+
+	idJag, claims, expiresAt, err := s.issueIDJAG(client, client.ID, audience, resource, scope)
+	if err != nil {
+		s.writeOAuthError(w, http.StatusInternalServerError, "server_error", err.Error())
+		return
+	}
+
+	s.recordTokenEvent("cc_id_jag", client.ID, client.ID, audience, resource, scope, idJag, claims, expiresAt)
 	s.writeJSON(w, http.StatusOK, tokenResponse{
 		AccessToken:     idJag,
 		TokenType:       "N_A",

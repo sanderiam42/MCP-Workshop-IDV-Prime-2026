@@ -17,6 +17,7 @@ import (
 const (
 	grantTypeAuthorizationCode = "authorization_code"
 	grantTypeTokenExchange     = "urn:ietf:params:oauth:grant-type:token-exchange"
+	grantTypeClientCredentials = "client_credentials"
 	idTokenType                = "urn:ietf:params:oauth:token-type:id_token"
 	idJagTokenType             = "urn:ietf:params:oauth:token-type:id-jag"
 )

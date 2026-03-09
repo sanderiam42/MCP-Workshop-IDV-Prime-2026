@@ -6,6 +6,7 @@ import (
 	"os"
 
 	"xaa-mcp-demo/internal/resourceserver"
+	"xaa-mcp-demo/internal/shared/debuglog"
 )
 
 func main() {
@@ -14,8 +15,15 @@ func main() {
 	issuer := envOrDefault("RESOURCE_SERVER_ISSUER", "http://localhost:8082")
 	authIssuer := envOrDefault("AUTH_SERVER_ISSUER", "http://localhost:8081")
 	authJWKSURL := envOrDefault("AUTH_SERVER_JWKS_URL", authIssuer+"/oauth/jwks.json")
+	verbose := envOrDefault("VERBOSE", "") == "true"
+	logFile := envOrDefault("LOG_FILE", "")
 
-	service, err := resourceserver.NewService(dataDir, issuer, authIssuer, authJWKSURL)
+	logger, err := debuglog.New("resource-server", verbose, logFile)
+	if err != nil {
+		log.Fatalf("create logger: %v", err)
+	}
+
+	service, err := resourceserver.NewService(dataDir, issuer, authIssuer, authJWKSURL, logger)
 	if err != nil {
 		log.Fatalf("create resource server: %v", err)
 	}

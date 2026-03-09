@@ -4,6 +4,7 @@ import (
 	"net/http"
 	"path/filepath"
 
+	"xaa-mcp-demo/internal/shared/debuglog"
 	"xaa-mcp-demo/internal/shared/jose"
 )
 
@@ -11,18 +12,24 @@ type Service struct {
 	issuer string
 	store  *Store
 	keys   *jose.KeySet
+	logger *debuglog.Logger
 }
 
-func NewService(dataDir string, issuer string) (*Service, error) {
+func NewService(dataDir string, issuer string, logger *debuglog.Logger) (*Service, error) {
 	keys, err := jose.LoadOrCreateRSAKey(filepath.Join(dataDir, "auth-signing-key.pem"))
 	if err != nil {
 		return nil, err
+	}
+
+	if logger == nil {
+		logger, _ = debuglog.New("auth-server", false, "")
 	}
 
 	return &Service{
 		issuer: issuer,
 		store:  NewStore(dataDir),
 		keys:   keys,
+		logger: logger,
 	}, nil
 }
 
@@ -38,7 +45,7 @@ func (s *Service) Handler() http.Handler {
 	mux.HandleFunc("/api/clients/", s.handleClientByID)
 	mux.HandleFunc("/api/internal/clients/", s.handleInternalClientByID)
 	mux.HandleFunc("/api/debug/state", s.handleDebugState)
-	return withJSONLoggingHeaders(mux)
+	return debuglog.Middleware(s.logger, withJSONLoggingHeaders(mux))
 }
 
 func (s *Service) handleHealthz(w http.ResponseWriter, r *http.Request) {
