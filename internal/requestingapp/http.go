@@ -10,10 +10,18 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
+	"time"
 
 	"xaa-mcp-demo/internal/shared/debuglog"
 	"xaa-mcp-demo/internal/shared/demo"
+	"xaa-mcp-demo/internal/shared/jose"
 )
+
+type cachedToken struct {
+	accessToken string
+	expiresAt   time.Time
+}
 
 type Service struct {
 	publicBase string
@@ -21,6 +29,7 @@ type Service struct {
 	store      *Store
 	runner     *Runner
 	logger     *debuglog.Logger
+	tokenCache sync.Map
 }
 
 func NewService(dataDir, webDir, publicBase, authPublicBase, authInternalBase, resourcePublicBase, resourceInternalBase string, logger *debuglog.Logger) *Service {
@@ -190,11 +199,11 @@ func (s *Service) handleRunFlow(w http.ResponseWriter, r *http.Request) {
 		err  error
 	)
 	if input.ClientSecret != "" && input.UserEmail == "" {
-		f, e := s.runner.RunClientCredentials(r.Context(), "browser", input)
+		f, _, e := s.runner.RunClientCredentials(r.Context(), "browser", input)
 		_ = s.store.SaveFlow(f)
 		flow, err = f, e
 	} else {
-		f, e := s.runner.Run(r.Context(), "browser", input)
+		f, _, e := s.runner.Run(r.Context(), "browser", input)
 		_ = s.store.SaveFlow(f)
 		flow, err = f, e
 	}
@@ -292,6 +301,31 @@ func (s *Service) handleStatic() http.Handler {
 		}
 		http.ServeFile(w, r, indexPath)
 	})
+}
+
+func (s *Service) cacheSet(key, accessToken string) {
+	_, claims, _ := jose.DecodeWithoutVerify(accessToken)
+	var expiresAt time.Time
+	if exp, ok := claims["exp"].(float64); ok {
+		expiresAt = time.Unix(int64(exp), 0).UTC()
+	}
+	if time.Until(expiresAt) <= 30*time.Second {
+		return
+	}
+	s.tokenCache.Store(key, cachedToken{accessToken: accessToken, expiresAt: expiresAt})
+}
+
+func (s *Service) cacheLookup(key string) (string, bool) {
+	v, ok := s.tokenCache.Load(key)
+	if !ok {
+		return "", false
+	}
+	ct := v.(cachedToken)
+	if time.Until(ct.expiresAt) <= 30*time.Second {
+		s.tokenCache.Delete(key)
+		return "", false
+	}
+	return ct.accessToken, true
 }
 
 func (s *Service) writeJSON(w http.ResponseWriter, status int, payload any) {

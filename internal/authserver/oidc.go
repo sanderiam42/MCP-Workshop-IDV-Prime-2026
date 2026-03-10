@@ -264,31 +264,24 @@ func (s *Service) handleTokenExchangeGrant(w http.ResponseWriter, r *http.Reques
 }
 
 func (s *Service) handleClientCredentialsGrant(w http.ResponseWriter, r *http.Request, client DemoClient) {
-	audience := strings.TrimSpace(r.Form.Get("audience"))
-	resource := strings.TrimSpace(r.Form.Get("resource"))
 	scope, err := normalizeMCPScopes(r.Form.Get("scope"))
 	if err != nil {
 		s.writeOAuthError(w, http.StatusBadRequest, "invalid_scope", err.Error())
 		return
 	}
-	if audience == "" || resource == "" {
-		s.writeOAuthError(w, http.StatusBadRequest, "invalid_request", "audience and resource are required")
-		return
-	}
 
-	idJag, claims, expiresAt, err := s.issueIDJAG(client, client.ID, audience, resource, scope)
+	idToken, claims, expiresAt, err := s.issueIDToken(client, client.ID, scope)
 	if err != nil {
 		s.writeOAuthError(w, http.StatusInternalServerError, "server_error", err.Error())
 		return
 	}
 
-	s.recordTokenEvent("cc_id_jag", client.ID, client.ID, audience, resource, scope, idJag, claims, expiresAt)
+	s.recordTokenEvent("cc_id_token", client.ID, client.ID, "", "", scope, idToken, claims, expiresAt)
 	s.writeJSON(w, http.StatusOK, tokenResponse{
-		AccessToken:     idJag,
-		TokenType:       "N_A",
-		ExpiresIn:       int64(time.Until(expiresAt).Seconds()),
-		Scope:           scope,
-		IssuedTokenType: idJagTokenType,
+		TokenType: "Bearer",
+		ExpiresIn: int64(time.Until(expiresAt).Seconds()),
+		IDToken:   idToken,
+		Scope:     scope,
 	})
 }
 

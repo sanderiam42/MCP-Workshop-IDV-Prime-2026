@@ -71,7 +71,7 @@ func NewRunner(authPublicBase, authInternalBase, resourcePublicBase, resourceInt
 	}
 }
 
-func (r *Runner) Run(ctx context.Context, trigger string, input FlowInput) (trace.Flow, error) {
+func (r *Runner) Run(ctx context.Context, trigger string, input FlowInput) (trace.Flow, string, error) {
 	flow := trace.NewFlow(trigger, strings.ToLower(strings.TrimSpace(input.UserEmail)), input.ClientID)
 	defer func() {
 		if flow.FinishedAt == "" {
@@ -86,7 +86,7 @@ func (r *Runner) Run(ctx context.Context, trigger string, input FlowInput) (trac
 	client, err := r.fetchClient(ctx, input.ClientID)
 	if err != nil {
 		flow.Fail(err)
-		return *flow, err
+		return *flow, "", err
 	}
 
 	initializePayload := map[string]any{
@@ -113,14 +113,14 @@ func (r *Runner) Run(ctx context.Context, trigger string, input FlowInput) (trac
 	if err != nil {
 		flow.FinishStep(challengeStep, 0, nil, err.Error(), nil)
 		flow.Fail(err)
-		return *flow, err
+		return *flow, "", err
 	}
 	resourceMetadataURL, challengedScope := parseResourceMetadata(challengeHeaders.Get("WWW-Authenticate"))
 	flow.FinishStep(challengeStep, challengeStatus, challengeBody, "Initial protected MCP request returned a bearer challenge.", challengeHeaders)
 	if challengeStatus != http.StatusUnauthorized || resourceMetadataURL == "" {
 		err := errors.New("resource server did not return a valid bearer challenge")
 		flow.Fail(err)
-		return *flow, err
+		return *flow, "", err
 	}
 
 	prmStep := flow.AddStep("Fetch protected resource metadata", http.MethodGet, resourceMetadataURL, nil)
@@ -128,7 +128,7 @@ func (r *Runner) Run(ctx context.Context, trigger string, input FlowInput) (trac
 	if err != nil {
 		flow.FinishStep(prmStep, 0, nil, err.Error(), nil)
 		flow.Fail(err)
-		return *flow, err
+		return *flow, "", err
 	}
 	flow.FinishStep(prmStep, prmStatus, prmBody, "", nil)
 
@@ -136,7 +136,7 @@ func (r *Runner) Run(ctx context.Context, trigger string, input FlowInput) (trac
 	if len(authorizationServers) == 0 {
 		err := errors.New("protected resource metadata did not include authorization_servers")
 		flow.Fail(err)
-		return *flow, err
+		return *flow, "", err
 	}
 	resourceAuthServer := fmt.Sprint(authorizationServers[0])
 
@@ -145,7 +145,7 @@ func (r *Runner) Run(ctx context.Context, trigger string, input FlowInput) (trac
 	if err != nil {
 		flow.FinishStep(resourceMetadataStep, 0, nil, err.Error(), nil)
 		flow.Fail(err)
-		return *flow, err
+		return *flow, "", err
 	}
 	flow.FinishStep(resourceMetadataStep, resourceMetaStatus, resourceMetaBody, "", nil)
 
@@ -154,7 +154,7 @@ func (r *Runner) Run(ctx context.Context, trigger string, input FlowInput) (trac
 	if err != nil {
 		flow.FinishStep(authMetadataStep, 0, nil, err.Error(), nil)
 		flow.Fail(err)
-		return *flow, err
+		return *flow, "", err
 	}
 	flow.FinishStep(authMetadataStep, authMetaStatus, authMetaBody, "", nil)
 
@@ -177,30 +177,30 @@ func (r *Runner) Run(ctx context.Context, trigger string, input FlowInput) (trac
 	if err != nil {
 		flow.FinishStep(authorizeStep, 0, nil, err.Error(), nil)
 		flow.Fail(err)
-		return *flow, err
+		return *flow, "", err
 	}
 	flow.FinishStep(authorizeStep, authzStatus, map[string]any{"location": location}, "The demo auth server auto-approves the enrolled email and returns an auth code redirect.", authzHeaders)
 	if authzStatus != http.StatusFound {
 		err := errors.New("authorization endpoint did not redirect with a code")
 		flow.Fail(err)
-		return *flow, err
+		return *flow, "", err
 	}
 
 	redirectLocation, err := url.Parse(location)
 	if err != nil {
 		flow.Fail(err)
-		return *flow, err
+		return *flow, "", err
 	}
 	if redirectLocation.Query().Get("state") != state {
 		err := errors.New("authorization state mismatch")
 		flow.Fail(err)
-		return *flow, err
+		return *flow, "", err
 	}
 	code := redirectLocation.Query().Get("code")
 	if code == "" {
 		err := errors.New("authorization code missing from redirect")
 		flow.Fail(err)
-		return *flow, err
+		return *flow, "", err
 	}
 
 	authTokenStep := flow.AddStep("Exchange auth code for ID token", http.MethodPost, fmt.Sprint(authMetaRaw["token_endpoint"]), map[string]any{
@@ -218,14 +218,14 @@ func (r *Runner) Run(ctx context.Context, trigger string, input FlowInput) (trac
 	if err != nil {
 		flow.FinishStep(authTokenStep, 0, nil, err.Error(), nil)
 		flow.Fail(err)
-		return *flow, err
+		return *flow, "", err
 	}
 	flow.FinishStep(authTokenStep, authTokenStatus, authTokenBody, "", nil)
 	idToken := fmt.Sprint(authTokenRaw["id_token"])
 	if idToken == "" {
 		err := errors.New("id token missing from auth code exchange")
 		flow.Fail(err)
-		return *flow, err
+		return *flow, "", err
 	}
 	_, idTokenClaims, _ := jose.DecodeWithoutVerify(idToken)
 	flow.AddToken("id_token", jose.TokenPreview(idToken), idTokenClaims)
@@ -250,14 +250,14 @@ func (r *Runner) Run(ctx context.Context, trigger string, input FlowInput) (trac
 	if err != nil {
 		flow.FinishStep(exchangeStep, 0, nil, err.Error(), nil)
 		flow.Fail(err)
-		return *flow, err
+		return *flow, "", err
 	}
 	flow.FinishStep(exchangeStep, exchangeStatus, exchangeBody, "", nil)
 	idJag := fmt.Sprint(exchangeRaw["access_token"])
 	if idJag == "" {
 		err := errors.New("id-jag missing from token exchange")
 		flow.Fail(err)
-		return *flow, err
+		return *flow, "", err
 	}
 	_, jagClaims, _ := jose.DecodeWithoutVerify(idJag)
 	flow.AddToken("id_jag", jose.TokenPreview(idJag), jagClaims)
@@ -274,127 +274,27 @@ func (r *Runner) Run(ctx context.Context, trigger string, input FlowInput) (trac
 	if err != nil {
 		flow.FinishStep(resourceTokenStep, 0, nil, err.Error(), nil)
 		flow.Fail(err)
-		return *flow, err
+		return *flow, "", err
 	}
 	flow.FinishStep(resourceTokenStep, resourceTokenStatus, resourceTokenBody, "", nil)
 	accessToken := fmt.Sprint(resourceTokenRaw["access_token"])
 	if accessToken == "" {
 		err := errors.New("resource access token missing from jwt bearer exchange")
 		flow.Fail(err)
-		return *flow, err
+		return *flow, "", err
 	}
 	_, accessClaims, _ := jose.DecodeWithoutVerify(accessToken)
 	flow.AddToken("access_token", jose.TokenPreview(accessToken), accessClaims)
 
-	authenticatedInitStep := flow.AddStep("Initialize upstream MCP session", http.MethodPost, r.resourcePublicBase+"/mcp", map[string]any{
-		"method": "initialize",
-		"params": initializePayload,
-	})
-	initStatus, _, initBody, err := r.postRPC(ctx, r.resourcePublicBase+"/mcp", accessToken, map[string]any{
-		"jsonrpc": "2.0",
-		"id":      2,
-		"method":  "initialize",
-		"params":  initializePayload,
-	})
-	if err != nil {
-		flow.FinishStep(authenticatedInitStep, 0, nil, err.Error(), nil)
-		flow.Fail(err)
-		return *flow, err
+	if err := r.runMCPCalls(ctx, flow, input, accessToken); err != nil {
+		return *flow, "", err
 	}
-	flow.FinishStep(authenticatedInitStep, initStatus, initBody, "", nil)
-
-	initializedStep := flow.AddStep("Send initialized notification", http.MethodPost, r.resourcePublicBase+"/mcp", map[string]any{
-		"method": "notifications/initialized",
-	})
-	initializedStatus, _, initializedBody, err := r.postRPC(ctx, r.resourcePublicBase+"/mcp", accessToken, map[string]any{
-		"jsonrpc": "2.0",
-		"method":  "notifications/initialized",
-	})
-	if err != nil {
-		flow.FinishStep(initializedStep, 0, nil, err.Error(), nil)
-		flow.Fail(err)
-		return *flow, err
-	}
-	flow.FinishStep(initializedStep, initializedStatus, initializedBody, "", nil)
-
-	toolsListStep := flow.AddStep("List upstream tools", http.MethodPost, r.resourcePublicBase+"/mcp", map[string]any{"method": "tools/list"})
-	toolsListStatus, _, toolsListBody, err := r.postRPC(ctx, r.resourcePublicBase+"/mcp", accessToken, map[string]any{
-		"jsonrpc": "2.0",
-		"id":      3,
-		"method":  "tools/list",
-	})
-	if err != nil {
-		flow.FinishStep(toolsListStep, 0, nil, err.Error(), nil)
-		flow.Fail(err)
-		return *flow, err
-	}
-	flow.FinishStep(toolsListStep, toolsListStatus, toolsListBody, "", nil)
-
-	resourcesListStep := flow.AddStep("List upstream resources", http.MethodPost, r.resourcePublicBase+"/mcp", map[string]any{"method": "resources/list"})
-	resourcesListStatus, _, resourcesListBody, err := r.postRPC(ctx, r.resourcePublicBase+"/mcp", accessToken, map[string]any{
-		"jsonrpc": "2.0",
-		"id":      4,
-		"method":  "resources/list",
-	})
-	if err != nil {
-		flow.FinishStep(resourcesListStep, 0, nil, err.Error(), nil)
-		flow.Fail(err)
-		return *flow, err
-	}
-	flow.FinishStep(resourcesListStep, resourcesListStatus, resourcesListBody, "", nil)
-
-	resourceReadStep := flow.AddStep("Read todo resource", http.MethodPost, r.resourcePublicBase+"/mcp", map[string]any{
-		"method": "resources/read",
-		"params": map[string]any{"uri": "todo://list"},
-	})
-	resourceReadStatus, _, resourceReadBody, err := r.postRPC(ctx, r.resourcePublicBase+"/mcp", accessToken, map[string]any{
-		"jsonrpc": "2.0",
-		"id":      5,
-		"method":  "resources/read",
-		"params":  map[string]any{"uri": "todo://list"},
-	})
-	if err != nil {
-		flow.FinishStep(resourceReadStep, 0, nil, err.Error(), nil)
-		flow.Fail(err)
-		return *flow, err
-	}
-	flow.FinishStep(resourceReadStep, resourceReadStatus, resourceReadBody, "", nil)
-
-	toolCallStep := flow.AddStep("Call upstream todo tool", http.MethodPost, r.resourcePublicBase+"/mcp", map[string]any{
-		"method": "tools/call",
-		"params": map[string]any{
-			"name":      input.ToolName,
-			"arguments": input.Arguments,
-		},
-	})
-	toolCallStatus, _, toolCallBody, err := r.postRPC(ctx, r.resourcePublicBase+"/mcp", accessToken, map[string]any{
-		"jsonrpc": "2.0",
-		"id":      6,
-		"method":  "tools/call",
-		"params": map[string]any{
-			"name":      input.ToolName,
-			"arguments": input.Arguments,
-		},
-	})
-	if err != nil {
-		flow.FinishStep(toolCallStep, 0, nil, err.Error(), nil)
-		flow.Fail(err)
-		return *flow, err
-	}
-	flow.FinishStep(toolCallStep, toolCallStatus, toolCallBody, "", nil)
-
-	flow.Complete(map[string]any{
-		"tool_name":         input.ToolName,
-		"tool_args":         input.Arguments,
-		"tool_call_result":  extractRPCResult(toolCallBody),
-		"resource_snapshot": extractRPCResult(resourceReadBody),
-	})
-	return *flow, nil
+	return *flow, accessToken, nil
 }
 
 const grantTypeClientCredentials = "client_credentials"
 
-func (r *Runner) RunClientCredentials(ctx context.Context, trigger string, input FlowInput) (trace.Flow, error) {
+func (r *Runner) RunClientCredentials(ctx context.Context, trigger string, input FlowInput) (trace.Flow, string, error) {
 	identity := strings.ToLower(strings.TrimSpace(input.ClientID))
 	flow := trace.NewFlow(trigger, identity, input.ClientID)
 	defer func() {
@@ -412,44 +312,41 @@ func (r *Runner) RunClientCredentials(ctx context.Context, trigger string, input
 		client, err := r.fetchClient(ctx, input.ClientID)
 		if err != nil {
 			flow.Fail(err)
-			return *flow, err
+			return *flow, "", err
 		}
 		clientSecret = client.Secret
-	}
-
-	initializePayload := map[string]any{
-		"protocolVersion": mcp.ProtocolVersion,
-		"capabilities": map[string]any{
-			"roots": map[string]any{},
-		},
-		"clientInfo": map[string]any{
-			"name":    "xaa-demo-requesting-app",
-			"version": "1.0.0",
-		},
 	}
 
 	r.logger.LogStep("Unauthenticated MCP initialize", http.MethodPost, r.resourcePublicBase+"/mcp")
 	challengeStep := flow.AddStep("Unauthenticated MCP initialize", http.MethodPost, r.resourcePublicBase+"/mcp", map[string]any{
 		"method": "initialize",
-		"params": initializePayload,
+		"params": map[string]any{
+			"protocolVersion": mcp.ProtocolVersion,
+			"capabilities":    map[string]any{"roots": map[string]any{}},
+			"clientInfo":      map[string]any{"name": "xaa-demo-requesting-app", "version": "1.0.0"},
+		},
 	})
 	challengeStatus, challengeHeaders, challengeBody, err := r.postRPC(ctx, r.resourcePublicBase+"/mcp", "", map[string]any{
 		"jsonrpc": "2.0",
 		"id":      1,
 		"method":  "initialize",
-		"params":  initializePayload,
+		"params": map[string]any{
+			"protocolVersion": mcp.ProtocolVersion,
+			"capabilities":    map[string]any{"roots": map[string]any{}},
+			"clientInfo":      map[string]any{"name": "xaa-demo-requesting-app", "version": "1.0.0"},
+		},
 	})
 	if err != nil {
 		flow.FinishStep(challengeStep, 0, nil, err.Error(), nil)
 		flow.Fail(err)
-		return *flow, err
+		return *flow, "", err
 	}
 	resourceMetadataURL, challengedScope := parseResourceMetadata(challengeHeaders.Get("WWW-Authenticate"))
 	flow.FinishStep(challengeStep, challengeStatus, challengeBody, "Initial protected MCP request returned a bearer challenge.", challengeHeaders)
 	if challengeStatus != http.StatusUnauthorized || resourceMetadataURL == "" {
 		err := errors.New("resource server did not return a valid bearer challenge")
 		flow.Fail(err)
-		return *flow, err
+		return *flow, "", err
 	}
 
 	r.logger.LogStep("Fetch protected resource metadata", http.MethodGet, resourceMetadataURL)
@@ -458,7 +355,7 @@ func (r *Runner) RunClientCredentials(ctx context.Context, trigger string, input
 	if err != nil {
 		flow.FinishStep(prmStep, 0, nil, err.Error(), nil)
 		flow.Fail(err)
-		return *flow, err
+		return *flow, "", err
 	}
 	flow.FinishStep(prmStep, prmStatus, prmBody, "", nil)
 
@@ -466,7 +363,7 @@ func (r *Runner) RunClientCredentials(ctx context.Context, trigger string, input
 	if len(authorizationServers) == 0 {
 		err := errors.New("protected resource metadata did not include authorization_servers")
 		flow.Fail(err)
-		return *flow, err
+		return *flow, "", err
 	}
 	resourceAuthServer := fmt.Sprint(authorizationServers[0])
 
@@ -476,7 +373,7 @@ func (r *Runner) RunClientCredentials(ctx context.Context, trigger string, input
 	if err != nil {
 		flow.FinishStep(resourceMetadataStep, 0, nil, err.Error(), nil)
 		flow.Fail(err)
-		return *flow, err
+		return *flow, "", err
 	}
 	flow.FinishStep(resourceMetadataStep, resourceMetaStatus, resourceMetaBody, "", nil)
 
@@ -486,40 +383,71 @@ func (r *Runner) RunClientCredentials(ctx context.Context, trigger string, input
 	if err != nil {
 		flow.FinishStep(authMetadataStep, 0, nil, err.Error(), nil)
 		flow.Fail(err)
-		return *flow, err
+		return *flow, "", err
 	}
 	flow.FinishStep(authMetadataStep, authMetaStatus, authMetaBody, "", nil)
 
 	tokenEndpoint := fmt.Sprint(authMetaRaw["token_endpoint"])
-	r.logger.LogStep("Client credentials grant (ID-JAG)", http.MethodPost, tokenEndpoint)
-	ccStep := flow.AddStep("Client credentials grant (ID-JAG)", http.MethodPost, tokenEndpoint, map[string]any{
+
+	r.logger.LogStep("Client credentials grant (ID token)", http.MethodPost, tokenEndpoint)
+	ccStep := flow.AddStep("Client credentials grant (ID token)", http.MethodPost, tokenEndpoint, map[string]any{
 		"grant_type": grantTypeClientCredentials,
-		"audience":   r.resourcePublicBase,
-		"resource":   r.resourcePublicBase + "/mcp",
 		"scope":      scopeOrDefault(challengedScope),
 	})
 	ccValues := url.Values{
 		"grant_type": []string{grantTypeClientCredentials},
-		"audience":   []string{r.resourcePublicBase},
-		"resource":   []string{r.resourcePublicBase + "/mcp"},
 		"scope":      []string{scopeOrDefault(challengedScope)},
 	}
 	ccStatus, _, ccBody, ccRaw, err := r.postForm(ctx, tokenEndpoint, input.ClientID, clientSecret, ccValues)
 	if err != nil {
 		flow.FinishStep(ccStep, 0, nil, err.Error(), nil)
 		flow.Fail(err)
-		return *flow, err
+		return *flow, "", err
 	}
 	flow.FinishStep(ccStep, ccStatus, ccBody, "", nil)
-	idJag := fmt.Sprint(ccRaw["access_token"])
-	if idJag == "" {
-		err := errors.New("id-jag missing from client credentials grant")
+	idToken := fmt.Sprint(ccRaw["id_token"])
+	if idToken == "" {
+		err := errors.New("id token missing from client credentials grant")
 		flow.Fail(err)
-		return *flow, err
+		return *flow, "", err
+	}
+	_, idTokenClaims, _ := jose.DecodeWithoutVerify(idToken)
+	r.logger.LogToken("received", "cc_id_token", identity, input.ClientID, idTokenClaims, time.Now().UTC().Add(5*time.Minute))
+	flow.AddToken("cc_id_token", jose.TokenPreview(idToken), idTokenClaims)
+
+	r.logger.LogStep("Exchange ID token for ID-JAG (token exchange)", http.MethodPost, tokenEndpoint)
+	exchangeStep := flow.AddStep("Exchange ID token for ID-JAG (token exchange)", http.MethodPost, tokenEndpoint, map[string]any{
+		"grant_type":           "urn:ietf:params:oauth:grant-type:token-exchange",
+		"requested_token_type": "urn:ietf:params:oauth:token-type:id-jag",
+		"audience":             r.resourcePublicBase,
+		"resource":             r.resourcePublicBase + "/mcp",
+		"scope":                scopeOrDefault(challengedScope),
+	})
+	exchangeValues := url.Values{
+		"grant_type":           []string{"urn:ietf:params:oauth:grant-type:token-exchange"},
+		"requested_token_type": []string{"urn:ietf:params:oauth:token-type:id-jag"},
+		"subject_token":        []string{idToken},
+		"subject_token_type":   []string{"urn:ietf:params:oauth:token-type:id_token"},
+		"audience":             []string{r.resourcePublicBase},
+		"resource":             []string{r.resourcePublicBase + "/mcp"},
+		"scope":                []string{scopeOrDefault(challengedScope)},
+	}
+	exchangeStatus, _, exchangeBody, exchangeRaw, err := r.postForm(ctx, tokenEndpoint, input.ClientID, clientSecret, exchangeValues)
+	if err != nil {
+		flow.FinishStep(exchangeStep, 0, nil, err.Error(), nil)
+		flow.Fail(err)
+		return *flow, "", err
+	}
+	flow.FinishStep(exchangeStep, exchangeStatus, exchangeBody, "", nil)
+	idJag := fmt.Sprint(exchangeRaw["access_token"])
+	if idJag == "" {
+		err := errors.New("id-jag missing from token exchange")
+		flow.Fail(err)
+		return *flow, "", err
 	}
 	_, jagClaims, _ := jose.DecodeWithoutVerify(idJag)
-	r.logger.LogToken("received", "cc_id_jag", identity, input.ClientID, jagClaims, time.Now().UTC().Add(5*time.Minute))
-	flow.AddToken("cc_id_jag", jose.TokenPreview(idJag), jagClaims)
+	r.logger.LogToken("received", "id_jag", identity, input.ClientID, jagClaims, time.Now().UTC().Add(5*time.Minute))
+	flow.AddToken("id_jag", jose.TokenPreview(idJag), jagClaims)
 
 	resourceTokenEndpoint := fmt.Sprint(resourceMetaRaw["token_endpoint"])
 	r.logger.LogStep("Exchange ID-JAG for resource access token", http.MethodPost, resourceTokenEndpoint)
@@ -535,18 +463,61 @@ func (r *Runner) RunClientCredentials(ctx context.Context, trigger string, input
 	if err != nil {
 		flow.FinishStep(resourceTokenStep, 0, nil, err.Error(), nil)
 		flow.Fail(err)
-		return *flow, err
+		return *flow, "", err
 	}
 	flow.FinishStep(resourceTokenStep, resourceTokenStatus, resourceTokenBody, "", nil)
 	accessToken := fmt.Sprint(resourceTokenRaw["access_token"])
 	if accessToken == "" {
 		err := errors.New("resource access token missing from jwt bearer exchange")
 		flow.Fail(err)
-		return *flow, err
+		return *flow, "", err
 	}
 	_, accessClaims, _ := jose.DecodeWithoutVerify(accessToken)
 	r.logger.LogToken("received", "access_token", identity, input.ClientID, accessClaims, time.Now().UTC().Add(10*time.Minute))
 	flow.AddToken("access_token", jose.TokenPreview(accessToken), accessClaims)
+
+	if err := r.runMCPCalls(ctx, flow, input, accessToken); err != nil {
+		return *flow, "", err
+	}
+	return *flow, accessToken, nil
+}
+
+func (r *Runner) RunWithCachedToken(ctx context.Context, trigger string, input FlowInput, accessToken string) (trace.Flow, error) {
+	identity := strings.ToLower(strings.TrimSpace(input.UserEmail))
+	if identity == "" {
+		identity = strings.ToLower(strings.TrimSpace(input.ClientID))
+	}
+	flow := trace.NewFlow(trigger, identity, input.ClientID)
+	defer func() {
+		if flow.FinishedAt == "" {
+			flow.Fail(nil)
+		}
+	}()
+
+	if input.ToolName == "" {
+		input.ToolName = "list_todos"
+	}
+
+	cachedStep := flow.AddStep("Reusing cached access token", "", "", nil)
+	flow.FinishStep(cachedStep, 0, map[string]any{"cached": true}, "Token cached from previous exchange; skipping auth steps.", nil)
+
+	if err := r.runMCPCalls(ctx, flow, input, accessToken); err != nil {
+		return *flow, err
+	}
+	return *flow, nil
+}
+
+func (r *Runner) runMCPCalls(ctx context.Context, flow *trace.Flow, input FlowInput, accessToken string) error {
+	initializePayload := map[string]any{
+		"protocolVersion": mcp.ProtocolVersion,
+		"capabilities": map[string]any{
+			"roots": map[string]any{},
+		},
+		"clientInfo": map[string]any{
+			"name":    "xaa-demo-requesting-app",
+			"version": "1.0.0",
+		},
+	}
 
 	authenticatedInitStep := flow.AddStep("Initialize upstream MCP session", http.MethodPost, r.resourcePublicBase+"/mcp", map[string]any{
 		"method": "initialize",
@@ -561,7 +532,7 @@ func (r *Runner) RunClientCredentials(ctx context.Context, trigger string, input
 	if err != nil {
 		flow.FinishStep(authenticatedInitStep, 0, nil, err.Error(), nil)
 		flow.Fail(err)
-		return *flow, err
+		return err
 	}
 	flow.FinishStep(authenticatedInitStep, initStatus, initBody, "", nil)
 
@@ -575,7 +546,7 @@ func (r *Runner) RunClientCredentials(ctx context.Context, trigger string, input
 	if err != nil {
 		flow.FinishStep(initializedStep, 0, nil, err.Error(), nil)
 		flow.Fail(err)
-		return *flow, err
+		return err
 	}
 	flow.FinishStep(initializedStep, initializedStatus, initializedBody, "", nil)
 
@@ -588,7 +559,7 @@ func (r *Runner) RunClientCredentials(ctx context.Context, trigger string, input
 	if err != nil {
 		flow.FinishStep(toolsListStep, 0, nil, err.Error(), nil)
 		flow.Fail(err)
-		return *flow, err
+		return err
 	}
 	flow.FinishStep(toolsListStep, toolsListStatus, toolsListBody, "", nil)
 
@@ -601,7 +572,7 @@ func (r *Runner) RunClientCredentials(ctx context.Context, trigger string, input
 	if err != nil {
 		flow.FinishStep(resourcesListStep, 0, nil, err.Error(), nil)
 		flow.Fail(err)
-		return *flow, err
+		return err
 	}
 	flow.FinishStep(resourcesListStep, resourcesListStatus, resourcesListBody, "", nil)
 
@@ -618,7 +589,7 @@ func (r *Runner) RunClientCredentials(ctx context.Context, trigger string, input
 	if err != nil {
 		flow.FinishStep(resourceReadStep, 0, nil, err.Error(), nil)
 		flow.Fail(err)
-		return *flow, err
+		return err
 	}
 	flow.FinishStep(resourceReadStep, resourceReadStatus, resourceReadBody, "", nil)
 
@@ -641,7 +612,7 @@ func (r *Runner) RunClientCredentials(ctx context.Context, trigger string, input
 	if err != nil {
 		flow.FinishStep(toolCallStep, 0, nil, err.Error(), nil)
 		flow.Fail(err)
-		return *flow, err
+		return err
 	}
 	flow.FinishStep(toolCallStep, toolCallStatus, toolCallBody, "", nil)
 
@@ -651,7 +622,7 @@ func (r *Runner) RunClientCredentials(ctx context.Context, trigger string, input
 		"tool_call_result":  extractRPCResult(toolCallBody),
 		"resource_snapshot": extractRPCResult(resourceReadBody),
 	})
-	return *flow, nil
+	return nil
 }
 
 func (r *Runner) fetchClient(ctx context.Context, clientID string) (DemoClient, error) {

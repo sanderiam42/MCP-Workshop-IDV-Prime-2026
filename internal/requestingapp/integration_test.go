@@ -210,7 +210,7 @@ func TestEndToEndClientCredentials(t *testing.T) {
 		t.Fatalf("expected successful CC list_todos, got %v", listResult)
 	}
 
-	// Verify the trace has cc_id_jag and no id_token.
+	// Verify the second bridge call hit the cache ("Reusing cached access token" step).
 	traceResult := postRPC(t, requestingAddr+"/host/mcp", map[string]string{
 		"X-Demo-Client":        "demo-requesting-app",
 		"X-Demo-Client-Secret": "demo-requesting-secret",
@@ -224,6 +224,24 @@ func TestEndToEndClientCredentials(t *testing.T) {
 	contents, _ := traceContents["contents"].([]any)
 	if len(contents) == 0 {
 		t.Fatalf("expected trace contents, got %v", traceResult)
+	}
+	traceText, _ := contents[0].(map[string]any)["text"].(string)
+	var tracePayload map[string]any
+	if err := json.Unmarshal([]byte(traceText), &tracePayload); err != nil {
+		t.Fatalf("unmarshal trace text: %v", err)
+	}
+	traceFlow, _ := tracePayload["flow"].(map[string]any)
+	steps, _ := traceFlow["steps"].([]any)
+	foundCacheStep := false
+	for _, s := range steps {
+		step, _ := s.(map[string]any)
+		if step["name"] == "Reusing cached access token" {
+			foundCacheStep = true
+			break
+		}
+	}
+	if !foundCacheStep {
+		t.Fatalf("expected 'Reusing cached access token' step in second bridge call trace, got steps: %v", steps)
 	}
 
 	// Browser-triggered CC flow verification via /api/flow/run.
@@ -242,11 +260,14 @@ func TestEndToEndClientCredentials(t *testing.T) {
 	if !ok {
 		t.Fatalf("expected tokens in CC flow, got %v", ccFlow["tokens"])
 	}
-	if _, has := ccTokens["cc_id_jag"]; !has {
-		t.Fatalf("CC flow must have cc_id_jag token, got %v", ccTokens)
+	if _, has := ccTokens["cc_id_token"]; !has {
+		t.Fatalf("CC flow must have cc_id_token token, got %v", ccTokens)
 	}
-	if _, has := ccTokens["id_token"]; has {
-		t.Fatalf("CC flow must not have id_token, got %v", ccTokens)
+	if _, has := ccTokens["id_jag"]; !has {
+		t.Fatalf("CC flow must have id_jag token from token exchange, got %v", ccTokens)
+	}
+	if _, has := ccTokens["cc_id_jag"]; has {
+		t.Fatalf("CC flow must not have cc_id_jag, got %v", ccTokens)
 	}
 }
 

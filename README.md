@@ -22,7 +22,7 @@ The host-facing bridge is the practical integration point for real MCP hosts. Cu
   - static demo-client registry
   - enrolled users by email
   - token exchange endpoint that issues ID-JAG JWTs
-  - client credentials grant that issues ID-JAGs directly (no user)
+  - client credentials grant that issues a machine ID token (no user); token exchange then produces the ID-JAG
 
 - `resource-server`
   - protected MCP server
@@ -124,7 +124,8 @@ make reset-state
    - the initial `401` bearer challenge
    - protected resource metadata
    - OIDC metadata
-   - `client_credentials` grant → ID-JAG (no auth code or ID token steps)
+   - `client_credentials` grant → ID token (machine ID token with sub=client_id)
+   - token exchange → ID-JAG
    - resource access token
    - final MCP requests and responses
 
@@ -222,47 +223,80 @@ http_headers = { "X-Demo-Client" = "demo-requesting-app", "X-Demo-Client-Secret"
 
 Once configured, Codex can call the same bridge tools as Cursor.
 
-## Command-Line Demo — Client Credentials Flow
+## Command-Line Demo — Full XAA Flow
 
-All steps below use curl. Start the demo first with `docker compose up --build`.
+`examples/xaa-demo.sh` shows the complete three-step token chain started by client credentials, passing each token explicitly to the next step:
 
-### Step 1 — Register a service client (or skip to use the pre-seeded one)
+1. **CC grant** → ID token (machine identity token with `sub=client_id`)
+2. **Token exchange** → ID-JAG (cross-app authorization grant)
+3. **JWT bearer** → resource access token
+4. MCP calls using the access token
+
+Start the demo first, then run:
 
 ```bash
-curl -s -X POST http://localhost:3000/api/clients \
-  -H "Content-Type: application/json" \
-  -d '{"id": "my-service", "name": "My Service"}' | jq .
-# Save the client_secret from the response
+docker compose up --build
+chmod +x examples/xaa-demo.sh && examples/xaa-demo.sh
 ```
 
-### Step 2 — Call an MCP tool via the bridge (client credentials path)
+To use a non-demo client, see [Register a Service Client](#register-a-service-client) and update `CLIENT_ID` / `CLIENT_SECRET` at the top of the script.
+
+### Step-by-step via curl (pre-seeded client)
+
+#### Step 1 — CC grant → ID token
 
 ```bash
-curl -s -X POST http://localhost:3000/host/mcp \
+BASIC=$(echo -n "demo-requesting-app:demo-requesting-secret" | base64)
+ID_TOKEN=$(curl -s -X POST http://localhost:8081/token \
+  -H "Authorization: Basic ${BASIC}" \
+  -H "Content-Type: application/x-www-form-urlencoded" \
+  -d "grant_type=client_credentials" \
+  -d "scope=mcp:read mcp:write" | jq -r '.id_token')
+```
+
+#### Step 2 — Token exchange → ID-JAG
+
+```bash
+ID_JAG=$(curl -s -X POST http://localhost:8081/token \
+  -H "Authorization: Basic ${BASIC}" \
+  -H "Content-Type: application/x-www-form-urlencoded" \
+  -d "grant_type=urn:ietf:params:oauth:grant-type:token-exchange" \
+  -d "subject_token=${ID_TOKEN}" \
+  -d "subject_token_type=urn:ietf:params:oauth:token-type:id_token" \
+  -d "requested_token_type=urn:ietf:params:oauth:token-type:id-jag" \
+  -d "audience=http://localhost:8082" \
+  -d "resource=http://localhost:8082/mcp" \
+  -d "scope=mcp:read mcp:write" | jq -r '.access_token')
+```
+
+#### Step 3 — JWT bearer → access token
+
+```bash
+ACCESS_TOKEN=$(curl -s -X POST http://localhost:8082/oauth/token \
+  -H "Authorization: Basic ${BASIC}" \
+  -H "Content-Type: application/x-www-form-urlencoded" \
+  -d "grant_type=urn:ietf:params:oauth:grant-type:jwt-bearer" \
+  -d "assertion=${ID_JAG}" \
+  -d "scope=mcp:read mcp:write" | jq -r '.access_token')
+```
+
+#### Step 4 — Call an MCP tool directly
+
+```bash
+curl -s -X POST http://localhost:8082/mcp \
+  -H "Authorization: Bearer ${ACCESS_TOKEN}" \
   -H "Content-Type: application/json" \
-  -H "X-Demo-Client: my-service" \
-  -H "X-Demo-Client-Secret: <secret from step 1>" \
   -d '{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"list_todos","arguments":{}}}' | jq .
 ```
 
-### Step 3 — Add a todo
+#### Via the bridge (all three steps performed automatically)
 
 ```bash
 curl -s -X POST http://localhost:3000/host/mcp \
   -H "Content-Type: application/json" \
-  -H "X-Demo-Client: my-service" \
-  -H "X-Demo-Client-Secret: <secret>" \
-  -d '{"jsonrpc":"2.0","id":2,"method":"tools/call","params":{"name":"add_todo","arguments":{"text":"hello from machine"}}}' | jq .
-```
-
-### Step 4 — Inspect the XAA trace
-
-```bash
-curl -s -X POST http://localhost:3000/host/mcp \
-  -H "Content-Type: application/json" \
-  -H "X-Demo-Client: my-service" \
-  -H "X-Demo-Client-Secret: <secret>" \
-  -d '{"jsonrpc":"2.0","id":3,"method":"resources/read","params":{"uri":"trace://latest"}}' | jq .
+  -H "X-Demo-Client: demo-requesting-app" \
+  -H "X-Demo-Client-Secret: demo-requesting-secret" \
+  -d '{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"list_todos","arguments":{}}}' | jq .
 ```
 
 ## Verbose Debug Logging

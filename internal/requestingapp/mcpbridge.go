@@ -79,21 +79,38 @@ func (s *Service) handleHostMCP(w http.ResponseWriter, r *http.Request) {
 			s.writeRPCResponse(w, http.StatusOK, mcp.Success(request.ID, errorToolResult(err)))
 			return
 		}
+		cacheKey := bridgeCacheKey(useClientCredentials, userEmail, clientID)
 		var flow trace.Flow
-		if useClientCredentials {
-			flow, err = s.runner.RunClientCredentials(r.Context(), "host", FlowInput{
+		if cached, ok := s.cacheLookup(cacheKey); ok {
+			flow, err = s.runner.RunWithCachedToken(r.Context(), "host", FlowInput{
+				UserEmail:    userEmail,
+				ClientID:     clientID,
+				ClientSecret: clientSecret,
+				ToolName:     params.Name,
+				Arguments:    params.Arguments,
+			}, cached)
+		} else if useClientCredentials {
+			var tok string
+			flow, tok, err = s.runner.RunClientCredentials(r.Context(), "host", FlowInput{
 				ClientID:     clientID,
 				ClientSecret: clientSecret,
 				ToolName:     params.Name,
 				Arguments:    params.Arguments,
 			})
+			if err == nil {
+				s.cacheSet(cacheKey, tok)
+			}
 		} else {
-			flow, err = s.runner.Run(r.Context(), "host", FlowInput{
+			var tok string
+			flow, tok, err = s.runner.Run(r.Context(), "host", FlowInput{
 				UserEmail: userEmail,
 				ClientID:  clientID,
 				ToolName:  params.Name,
 				Arguments: params.Arguments,
 			})
+			if err == nil {
+				s.cacheSet(cacheKey, tok)
+			}
 		}
 		_ = s.store.SaveFlow(flow)
 		if err != nil {
@@ -214,4 +231,11 @@ func errorToolResult(err error) map[string]any {
 func mustJSON(value any) string {
 	data, _ := json.MarshalIndent(value, "", "  ")
 	return string(data)
+}
+
+func bridgeCacheKey(useCC bool, userEmail, clientID string) string {
+	if useCC {
+		return "cc:" + clientID
+	}
+	return "ac:" + userEmail + ":" + clientID
 }
