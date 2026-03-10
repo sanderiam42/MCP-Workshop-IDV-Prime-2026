@@ -1,11 +1,23 @@
 #!/bin/bash
 # XAA MCP Demo — explicit token-passing, CC-bootstrapped
 # Prerequisites: docker compose up --build, jq
+#
+# Before running this script, provision a client:
+#
+#   curl -s -X POST http://localhost:3000/api/clients/provision \
+#     -H "Content-Type: application/json" \
+#     -d '{"name": "my-app"}' | jq .
+#
+# Copy the returned client_id and client_secret into the variables below.
+# The secret is shown only once — save it before continuing.
 
 AUTH_URL="http://localhost:8081"
 RESOURCE_URL="http://localhost:8082"
-CLIENT_ID="demo-requesting-app"
-CLIENT_SECRET="demo-requesting-secret"
+
+# Paste your provisioned credentials here:
+CLIENT_ID="<your-client-id>"
+CLIENT_SECRET="<your-client-secret>"
+
 BASIC=$(echo -n "${CLIENT_ID}:${CLIENT_SECRET}" | base64)
 
 echo "=== Step 1: Client credentials grant → ID token ==="

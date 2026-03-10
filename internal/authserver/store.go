@@ -14,9 +14,6 @@ import (
 )
 
 const (
-	defaultClientID       = "demo-requesting-app"
-	defaultClientSecret   = "demo-requesting-secret"
-	defaultClientName     = "Demo Requesting App"
 	defaultClientRedirect = "http://localhost:3000/callback"
 )
 
@@ -267,15 +264,7 @@ func (s *Store) DebugState() (State, error) {
 }
 
 func seedState(state *State) {
-	state.Clients = []DemoClient{
-		{
-			ID:          defaultClientID,
-			Name:        defaultClientName,
-			Secret:      defaultClientSecret,
-			RedirectURI: defaultClientRedirect,
-			CreatedAt:   nowString(),
-		},
-	}
+	state.Clients = []DemoClient{}
 	state.Users = []User{}
 	state.AuthCodes = []AuthCode{}
 	state.RecentEvents = []TokenEvent{}

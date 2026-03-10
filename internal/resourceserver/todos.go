@@ -254,15 +254,7 @@ func (s *Store) DebugState() (State, error) {
 }
 
 func seedState(state *State) {
-	state.Clients = []DemoClient{
-		{
-			ID:          demo.DefaultClientID,
-			Name:        demo.DefaultClientName,
-			Secret:      demo.DefaultClientSecret,
-			RedirectURI: demo.DefaultClientRedirect,
-			CreatedAt:   nowString(),
-		},
-	}
+	state.Clients = []DemoClient{}
 	state.Todos = map[string][]Todo{}
 	state.RecentAccessTokens = []AccessTokenEvent{}
 	state.RecentMCPCalls = []MCPEvent{}

@@ -47,18 +47,14 @@ func BuildSnippets(userEmail, clientID string) map[string]string {
 			"xaa-demo-machine": map[string]any{
 				"url": "http://localhost:3000/host/mcp",
 				"headers": map[string]string{
-					"X-Demo-Client":        demo.DefaultClientID,
-					"X-Demo-Client-Secret": demo.DefaultClientSecret,
+					"X-Demo-Client":        "<your-client-id>",
+					"X-Demo-Client-Secret": "<your-client-secret>",
 				},
 			},
 		},
 	}
 	cursorCCJSON, _ := json.MarshalIndent(cursorCCConfig, "", "  ")
-	codexCCTOML := fmt.Sprintf(
-		"[mcp_servers.xaa_demo_machine]\nurl = \"http://localhost:3000/host/mcp\"\nhttp_headers = { \"X-Demo-Client\" = \"%s\", \"X-Demo-Client-Secret\" = \"%s\" }\n",
-		demo.DefaultClientID,
-		demo.DefaultClientSecret,
-	)
+	codexCCTOML := "[mcp_servers.xaa_demo_machine]\nurl = \"http://localhost:3000/host/mcp\"\nhttp_headers = { \"X-Demo-Client\" = \"<your-client-id>\", \"X-Demo-Client-Secret\" = \"<your-client-secret>\" }\n"
 
 	return map[string]string{
 		"cursor":    string(cursorJSON),

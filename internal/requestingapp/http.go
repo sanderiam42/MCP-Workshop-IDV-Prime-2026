@@ -51,6 +51,7 @@ func (s *Service) Handler() http.Handler {
 	mux.HandleFunc("/api/dashboard", s.handleDashboard)
 	mux.HandleFunc("/api/users", s.handleCreateUser)
 	mux.HandleFunc("/api/clients", s.handleCreateClient)
+	mux.HandleFunc("/api/clients/provision", s.handleProvisionClient)
 	mux.HandleFunc("/api/flow/run", s.handleRunFlow)
 	mux.HandleFunc("/host/mcp", s.handleHostMCP)
 	mux.Handle("/", s.handleStatic())
@@ -177,6 +178,89 @@ func (s *Service) handleCreateClient(w http.ResponseWriter, r *http.Request) {
 		"auth":          sanitizeSecrets(authBody),
 		"resource":      sanitizeSecrets(resourceBody),
 	})
+}
+
+func (s *Service) handleProvisionClient(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		w.WriteHeader(http.StatusMethodNotAllowed)
+		return
+	}
+
+	var payload map[string]string
+	if err := json.NewDecoder(r.Body).Decode(&payload); err != nil {
+		s.writeJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid JSON payload"})
+		return
+	}
+
+	name := strings.TrimSpace(payload["name"])
+	var clientID string
+	if name != "" {
+		clientID = slugify(name) + "-" + randomURLToken(6)[:8]
+	} else {
+		clientID = "client-" + randomURLToken(6)[:8]
+	}
+	secret := randomURLToken(16)
+
+	clientPayload := map[string]string{
+		"id":           clientID,
+		"name":         name,
+		"secret":       secret,
+		"redirect_uri": "http://localhost:3000/callback",
+	}
+
+	authStatus, authBody, err := s.postJSON(r.Context(), s.runner.authPublicBase+"/api/clients", clientPayload)
+	if err != nil {
+		s.writeJSON(w, http.StatusBadGateway, map[string]string{"error": err.Error()})
+		return
+	}
+	if authStatus >= 300 {
+		s.writeJSON(w, authStatus, authBody)
+		return
+	}
+
+	resourceStatus, resourceBody, err := s.postJSON(r.Context(), s.runner.resourcePublicBase+"/api/clients", clientPayload)
+	if err != nil {
+		_, _, _ = s.deleteJSON(r.Context(), s.runner.authPublicBase+"/api/clients/"+clientID)
+		s.writeJSON(w, http.StatusBadGateway, map[string]string{"error": err.Error()})
+		return
+	}
+	if resourceStatus >= 300 {
+		_, _, _ = s.deleteJSON(r.Context(), s.runner.authPublicBase+"/api/clients/"+clientID)
+		s.writeJSON(w, resourceStatus, resourceBody)
+		return
+	}
+
+	s.writeJSON(w, http.StatusCreated, map[string]any{
+		"client_id":     clientID,
+		"client_secret": secret,
+		"auth":          sanitizeSecrets(authBody),
+		"resource":      sanitizeSecrets(resourceBody),
+	})
+}
+
+// slugify converts a display name into a URL-safe lowercase slug.
+// Non-alphanumeric characters become hyphens; consecutive hyphens are collapsed.
+func slugify(name string) string {
+	name = strings.ToLower(strings.TrimSpace(name))
+	var b strings.Builder
+	prevHyphen := true // suppress leading hyphens
+	for _, r := range name {
+		if (r >= 'a' && r <= 'z') || (r >= '0' && r <= '9') {
+			b.WriteRune(r)
+			prevHyphen = false
+		} else if !prevHyphen {
+			b.WriteRune('-')
+			prevHyphen = true
+		}
+	}
+	result := strings.TrimRight(b.String(), "-")
+	if len(result) > 40 {
+		result = result[:40]
+	}
+	if result == "" {
+		return "client"
+	}
+	return result
 }
 
 func (s *Service) handleRunFlow(w http.ResponseWriter, r *http.Request) {

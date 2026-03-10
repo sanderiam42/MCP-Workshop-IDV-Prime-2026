@@ -4,14 +4,14 @@
       "url": "http://localhost:3000/host/mcp",
       "headers": {
         "X-Demo-User": "alice@example.com",
-        "X-Demo-Client": "demo-requesting-app"
+        "X-Demo-Client": "<your-client-id>"
       }
     },
     "xaa-demo-machine": {
       "url": "http://localhost:3000/host/mcp",
       "headers": {
-        "X-Demo-Client": "demo-requesting-app",
-        "X-Demo-Client-Secret": "demo-requesting-secret"
+        "X-Demo-Client": "<your-client-id>",
+        "X-Demo-Client-Secret": "<your-client-secret>"
       }
     }
   }

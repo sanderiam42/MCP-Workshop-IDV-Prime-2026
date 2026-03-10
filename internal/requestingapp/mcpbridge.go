@@ -6,7 +6,6 @@ import (
 	"net/http"
 	"strings"
 
-	"xaa-mcp-demo/internal/shared/demo"
 	"xaa-mcp-demo/internal/shared/mcp"
 	"xaa-mcp-demo/internal/shared/trace"
 )
@@ -200,7 +199,8 @@ func bridgeContext(r *http.Request) (userEmail, clientID, clientSecret string, u
 	clientID = strings.TrimSpace(r.Header.Get("X-Demo-Client"))
 	clientSecret = strings.TrimSpace(r.Header.Get("X-Demo-Client-Secret"))
 	if clientID == "" {
-		clientID = demo.DefaultClientID
+		err = errors.New("X-Demo-Client header is required")
+		return
 	}
 	if clientSecret != "" && userEmail == "" {
 		useClientCredentials = true

@@ -171,12 +171,19 @@ func TestEndToEndClientCredentials(t *testing.T) {
 	})
 	defer requestingClose()
 
-	// Use the pre-seeded demo-requesting-app / demo-requesting-secret client credentials.
-	// No user enrollment needed for client credentials flow.
+	// Provision a fresh client — no user enrollment needed for client credentials flow.
+	provisionResp := postJSON(t, requestingAddr+"/api/clients/provision", map[string]any{
+		"name": "test-cc-client",
+	}, http.StatusCreated)
+	clientID, _ := provisionResp["client_id"].(string)
+	clientSecret, _ := provisionResp["client_secret"].(string)
+	if clientID == "" || clientSecret == "" {
+		t.Fatalf("provision returned empty credentials: %v", provisionResp)
+	}
 
 	addResult := postRPC(t, requestingAddr+"/host/mcp", map[string]string{
-		"X-Demo-Client":        "demo-requesting-app",
-		"X-Demo-Client-Secret": "demo-requesting-secret",
+		"X-Demo-Client":        clientID,
+		"X-Demo-Client-Secret": clientSecret,
 	}, map[string]any{
 		"jsonrpc": "2.0",
 		"id":      1,
@@ -194,8 +201,8 @@ func TestEndToEndClientCredentials(t *testing.T) {
 	}
 
 	listResult := postRPC(t, requestingAddr+"/host/mcp", map[string]string{
-		"X-Demo-Client":        "demo-requesting-app",
-		"X-Demo-Client-Secret": "demo-requesting-secret",
+		"X-Demo-Client":        clientID,
+		"X-Demo-Client-Secret": clientSecret,
 	}, map[string]any{
 		"jsonrpc": "2.0",
 		"id":      2,
@@ -212,8 +219,8 @@ func TestEndToEndClientCredentials(t *testing.T) {
 
 	// Verify the second bridge call hit the cache ("Reusing cached access token" step).
 	traceResult := postRPC(t, requestingAddr+"/host/mcp", map[string]string{
-		"X-Demo-Client":        "demo-requesting-app",
-		"X-Demo-Client-Secret": "demo-requesting-secret",
+		"X-Demo-Client":        clientID,
+		"X-Demo-Client-Secret": clientSecret,
 	}, map[string]any{
 		"jsonrpc": "2.0",
 		"id":      3,
@@ -246,8 +253,8 @@ func TestEndToEndClientCredentials(t *testing.T) {
 
 	// Browser-triggered CC flow verification via /api/flow/run.
 	ccFlow := postJSON(t, requestingAddr+"/api/flow/run", map[string]any{
-		"client_id":     "demo-requesting-app",
-		"client_secret": "demo-requesting-secret",
+		"client_id":     clientID,
+		"client_secret": clientSecret,
 		"tool_name":     "list_todos",
 		"arguments":     map[string]any{},
 	}, http.StatusOK)
