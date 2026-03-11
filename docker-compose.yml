@@ -1,4 +1,5 @@
 services:
+<<<<<<< HEAD
   postgres:
     image: postgres:16
     environment:
@@ -64,3 +65,61 @@ networks:
   training-network:
     driver: bridge
 
+=======
+  auth-server:
+    build:
+      context: .
+      dockerfile: deploy/auth-server.Dockerfile
+    environment:
+      PORT: "8081"
+      DATA_DIR: /app/data
+      AUTH_SERVER_ISSUER: http://localhost:8081
+      # - VERBOSE=true
+      # - LOG_FILE=/data/debug.log
+    ports:
+      - "8081:8081"
+    volumes:
+      - ./data/auth:/app/data
+
+  resource-server:
+    build:
+      context: .
+      dockerfile: deploy/resource-server.Dockerfile
+    environment:
+      PORT: "8082"
+      DATA_DIR: /app/data
+      RESOURCE_SERVER_ISSUER: http://localhost:8082
+      AUTH_SERVER_ISSUER: http://localhost:8081
+      AUTH_SERVER_JWKS_URL: http://auth-server:8081/oauth/jwks.json
+      # - VERBOSE=true
+      # - LOG_FILE=/data/debug.log
+    ports:
+      - "8082:8082"
+    depends_on:
+      - auth-server
+    volumes:
+      - ./data/resource:/app/data
+
+  requesting-app:
+    build:
+      context: .
+      dockerfile: deploy/requesting-app.Dockerfile
+    environment:
+      PORT: "3000"
+      DATA_DIR: /app/data
+      WEB_DIST_DIR: /app/web/dist
+      REQUESTING_APP_BASE_URL: http://localhost:3000
+      AUTH_SERVER_ISSUER: http://localhost:8081
+      AUTH_SERVER_INTERNAL_URL: http://auth-server:8081
+      RESOURCE_SERVER_ISSUER: http://localhost:8082
+      RESOURCE_SERVER_INTERNAL_URL: http://resource-server:8082
+      # - VERBOSE=true
+      # - LOG_FILE=/data/debug.log
+    ports:
+      - "3000:3000"
+    depends_on:
+      - auth-server
+      - resource-server
+    volumes:
+      - ./data/requesting-app:/app/data
+>>>>>>> NS-XAA-MCP-Demo/main

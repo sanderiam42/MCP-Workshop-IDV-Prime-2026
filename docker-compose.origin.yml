@@ -1,0 +1,66 @@
+services:
+  postgres:
+    image: postgres:16
+    environment:
+      POSTGRES_DB: demo
+      POSTGRES_USER: demouser
+      POSTGRES_PASSWORD: demopass123
+    volumes:
+      - ./pg-init:/docker-entrypoint-initdb.d:ro
+      - pgdata:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    networks:
+      - training-network
+
+  ollama:
+    image: ollama/ollama:latest
+    environment:
+      OLLAMA_KEEP_ALIVE: "24h"
+    volumes:
+      - ollama-models:/root/.ollama
+    ports:
+      - "11434:11434"
+    # Let the image run its default entrypoint; we just tell it to 'serve'
+    command: ["serve"]
+    networks:
+      - training-network
+
+  ollama-model-puller:
+    image: docker:cli
+    depends_on:
+      - ollama
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - ./pull-ollama-model.sh:/pull-ollama-model.sh:ro
+    networks:
+      - training-network
+    command: ["sh", "/pull-ollama-model.sh"]
+
+  client:
+    image: node:20-slim
+    stdin_open: true
+    tty: true
+    command: >
+      bash -c "
+        if [ ! -f /root/.setup-complete ]; then
+          apt-get update &&
+          apt-get install -y git curl jq vim &&
+          corepack enable &&
+          corepack prepare npm@10 --activate &&
+          npm install -g @modelcontextprotocol/server-filesystem @mzxrai/mcp-webresearch pg-mcp-server &&
+          touch /root/.setup-complete
+        fi &&
+        exec bash
+      "
+    networks:
+      - training-network
+
+volumes:
+  pgdata: {}
+  ollama-models: {}
+
+networks:
+  training-network:
+    driver: bridge
+
