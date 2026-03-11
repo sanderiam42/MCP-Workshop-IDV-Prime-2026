@@ -1,1 +1,0 @@
-This repository contains lab materials for an MCP (Model Context Protocol) workshop. It is **not a software project with a build system** — it is a collection of configuration files, Docker infrastructure, and instructional assets for running hands-on MCP labs.
