@@ -15,17 +15,3 @@ you're going to use the "query" tool to get info about movies from the movies ta
 cp ../MCP-Workshop-IDV-Prime-2026/cheatsheet/BROKEN.mcp-config.json ./mcp-config.json
 cp ../MCP-Workshop-IDV-Prime-2026/docker-compose-lab-mcp-config-files/SECRETWRAPPED.mcp-config.json mcp-config.json
 cp ../MCP-Workshop-IDV-Prime-2026/cheatsheet/SUPPLIEDSECRET.mcp-config.json mcp-config.json
-
-# --- OIDC/XAA Todo0 step ---
-exit
-cp ../MCP-Workshop-IDV-Prime-2026/docker-compose-lab-mcp-config-files/OIDCTODO0.mcp-config.json mcp-config.json
-../MCP-Workshop-IDV-Prime-2026/get-xaa-token.sh
-# Open the printed URL in your browser. Log in (any email — playground sends a code).
-# Browser will redirect to localhost and fail — that's expected.
-# Copy the code= value from the URL bar, paste it back in the terminal.
-source ../MCP-Workshop-IDV-Prime-2026/.env.xaa
-npm start
-What are my todos?
-How many todos have I completed?
-Show me my incomplete todos.
-What are my todo statistics?

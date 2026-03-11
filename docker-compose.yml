@@ -41,9 +41,6 @@ services:
     image: node:20-slim
     stdin_open: true
     tty: true
-    env_file:
-      - path: .env.xaa
-        required: false
     command: >
       bash -c "
         if [ ! -f /root/.setup-complete ]; then

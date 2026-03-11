@@ -26,7 +26,7 @@ Set up your own lab environment. Three sub-options are available:
 ## Repository Structure
 
 ### Main Directory Files
-The files in the main directory (`docker-compose.yml`, `pg-init/`, `pull-ollama-model.sh`, `get-xaa-token.sh`, `.env.xaa`) are used by both:
+The files in the main directory (`docker-compose.yml`, `pg-init/`, `pull-ollama-model.sh`) are used by both:
 - Astrix-supplied labs (hosted Docker Compose environment)
 - BYO Docker Compose labs
 
@@ -39,16 +39,6 @@ Two sets of MCP configuration files are provided:
 - **`docker-compose-lab-mcp-config-files/`**: Configuration files for Docker Compose labs
   - Used by: Docker Compose labs (both Astrix-supplied and BYO)
 
-The `docker-compose-lab-mcp-config-files/` directory contains three variants:
-- **`WORKING`** — hardcoded credentials, used in the first phase of the workshop
-- **`SECRETWRAPPED`** — credentials fetched from AWS Secrets Manager via mcp-secret-wrapper
-- **`OIDCTODO0`** — connects to a remote Todo0 MCP server at xaa.dev using OIDC/XAA (Cross App Access) authentication — demonstrates authenticated access to a third-party MCP resource server
-
-The `claude-desktop-lab-mcp-config-files/` directory contains `WORKING` and `SECRETWRAPPED` variants only (there is no Claude Desktop variant of OIDCTODO0; the auth script is terminal-based and container-specific).
-
-### XAA/OIDC Prerequisites (OIDCTODO0 step)
-- Requires outbound HTTPS access to `idp.xaa.dev`, `auth.resource.xaa.dev`, and `mcp.xaa.dev`
-- Requires one-time prep-team registration at `xaa.dev/developer/register` to obtain client credentials
-- `.env.xaa` is pre-populated with workshop credentials and committed to the repo — no student action required; vars are loaded automatically via Docker Compose `env_file`
+Each directory contains both `WORKING` and `SECRETWRAPPED` versions of the configuration files for use during different phases of the workshop.
 
 NOTE: DO NOT USE ANY OF THE DOCKER IMAGES IN A PRODUCTION SETTING. These have been built with the express purpose of demonstrating an insecure, bad state configuration. There is no data worth stealing in them right now, but if you put some there, you're asking for trouble!
