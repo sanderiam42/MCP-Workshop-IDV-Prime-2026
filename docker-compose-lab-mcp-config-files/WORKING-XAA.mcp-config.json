@@ -1,0 +1,17 @@
+{
+  "mcpServers": {
+    "xaa-demo": {
+      "command": "/absolute/path/to/bin/xaa-mcp-stdio-linux-amd64",
+      "args": [],
+      "env": {
+        "XAA_BRIDGE_URL": "http://requesting-app:3000/host/mcp",
+        "XAA_CLIENT_ID": "<your-client-id>",
+        "XAA_CLIENT_SECRET": "<your-client-secret>"
+      }
+    }
+  },
+  "ollama": {
+    "host": "http://ollama:11434",
+    "model": "llama3.2:1b"
+  }
+}
