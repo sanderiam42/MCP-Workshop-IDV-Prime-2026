@@ -2,7 +2,7 @@ package mcp
 
 import "encoding/json"
 
-const ProtocolVersion = "2025-11-25"
+const ProtocolVersion = "2024-11-05"
 
 type Request struct {
 	JSONRPC string          `json:"jsonrpc"`
