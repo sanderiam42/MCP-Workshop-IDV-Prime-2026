@@ -1,4 +1,4 @@
-.PHONY: test web-install web-build build up down reset-state
+.PHONY: test web-install web-build build build-stdio-mac build-stdio-linux up down reset-state
 
 test:
 	cd xaa-demo && go test ./...
@@ -11,6 +11,13 @@ web-build: web-install
 
 build: web-build
 	cd xaa-demo && go build ./...
+
+build-stdio-mac:
+	cd xaa-demo && go build -o ../bin/xaa-mcp-stdio-darwin ./cmd/xaa-mcp-stdio
+
+build-stdio-linux:
+	cd xaa-demo && CGO_ENABLED=0 GOOS=linux GOARCH=amd64 \
+	  go build -o ../bin/xaa-mcp-stdio-linux-amd64 ./cmd/xaa-mcp-stdio
 
 up:
 	docker compose --env-file xaa-demo/.env up --build

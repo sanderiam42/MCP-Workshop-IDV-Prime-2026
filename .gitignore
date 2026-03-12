@@ -1,4 +1,5 @@
 data/
+bin/
 xaa-demo/web/node_modules
 xaa-demo/web/dist
 xaa-demo/web/*.tsbuildinfo
