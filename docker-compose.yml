@@ -32,7 +32,7 @@ services:
       - ollama
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
-      - ./pull-ollama-model.sh:/pull-ollama-model.sh:ro
+      - ./docker-compose-lab-mcp-config-files/pull-ollama-model.sh:/pull-ollama-model.sh:ro
     networks:
       - training-network
     command: ["sh", "/pull-ollama-model.sh"]
@@ -58,7 +58,7 @@ services:
 
   auth-server:
     build:
-      context: .
+      context: ./xaa-demo
       dockerfile: deploy/auth-server.Dockerfile
     environment:
       PORT: "8081"
@@ -75,7 +75,7 @@ services:
 
   resource-server:
     build:
-      context: .
+      context: ./xaa-demo
       dockerfile: deploy/resource-server.Dockerfile
     environment:
       PORT: "8082"
@@ -96,7 +96,7 @@ services:
 
   requesting-app:
     build:
-      context: .
+      context: ./xaa-demo
       dockerfile: deploy/requesting-app.Dockerfile
     environment:
       PORT: "3000"

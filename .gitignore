@@ -1,6 +1,6 @@
 data/
-web/node_modules
-web/dist
-web/*.tsbuildinfo
+xaa-demo/web/node_modules
+xaa-demo/web/dist
+xaa-demo/web/*.tsbuildinfo
 .cursor/mcp.json
 .DS_Store
