@@ -15,18 +15,22 @@ type DashboardData struct {
 	Selection map[string]string `json:"selection"`
 }
 
-func BuildSnippets(userEmail, clientID string) map[string]string {
+func BuildSnippets(userEmail, clientID, publicBase string) map[string]string {
 	if userEmail == "" {
 		userEmail = "you@example.com"
 	}
 	if clientID == "" {
 		clientID = demo.DefaultClientID
 	}
+	if publicBase == "" {
+		publicBase = "http://localhost:3000"
+	}
+	mcpURL := publicBase + "/host/mcp"
 
 	cursorConfig := map[string]any{
 		"mcpServers": map[string]any{
 			"xaa-demo-user": map[string]any{
-				"url": "http://localhost:3000/host/mcp",
+				"url": mcpURL,
 				"headers": map[string]string{
 					"X-Demo-User":   userEmail,
 					"X-Demo-Client": clientID,
@@ -37,7 +41,8 @@ func BuildSnippets(userEmail, clientID string) map[string]string {
 
 	cursorJSON, _ := json.MarshalIndent(cursorConfig, "", "  ")
 	codexTOML := fmt.Sprintf(
-		"[mcp_servers.xaa_demo_user]\nurl = \"http://localhost:3000/host/mcp\"\nhttp_headers = { \"X-Demo-User\" = \"%s\", \"X-Demo-Client\" = \"%s\" }\n",
+		"[mcp_servers.xaa_demo_user]\nurl = \"%s\"\nhttp_headers = { \"X-Demo-User\" = \"%s\", \"X-Demo-Client\" = \"%s\" }\n",
+		mcpURL,
 		userEmail,
 		clientID,
 	)
@@ -45,7 +50,7 @@ func BuildSnippets(userEmail, clientID string) map[string]string {
 	cursorCCConfig := map[string]any{
 		"mcpServers": map[string]any{
 			"xaa-demo-machine": map[string]any{
-				"url": "http://localhost:3000/host/mcp",
+				"url": mcpURL,
 				"headers": map[string]string{
 					"X-Demo-Client":        "<your-client-id>",
 					"X-Demo-Client-Secret": "<your-client-secret>",
@@ -54,7 +59,7 @@ func BuildSnippets(userEmail, clientID string) map[string]string {
 		},
 	}
 	cursorCCJSON, _ := json.MarshalIndent(cursorCCConfig, "", "  ")
-	codexCCTOML := "[mcp_servers.xaa_demo_machine]\nurl = \"http://localhost:3000/host/mcp\"\nhttp_headers = { \"X-Demo-Client\" = \"<your-client-id>\", \"X-Demo-Client-Secret\" = \"<your-client-secret>\" }\n"
+	codexCCTOML := fmt.Sprintf("[mcp_servers.xaa_demo_machine]\nurl = \"%s\"\nhttp_headers = { \"X-Demo-Client\" = \"<your-client-id>\", \"X-Demo-Client-Secret\" = \"<your-client-secret>\" }\n", mcpURL)
 
 	return map[string]string{
 		"cursor":    string(cursorJSON),

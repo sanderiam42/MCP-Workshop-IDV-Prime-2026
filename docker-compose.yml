@@ -1,5 +1,4 @@
 services:
-<<<<<<< HEAD
   postgres:
     image: postgres:16
     environment:
@@ -57,15 +56,6 @@ services:
     networks:
       - training-network
 
-volumes:
-  pgdata: {}
-  ollama-models: {}
-
-networks:
-  training-network:
-    driver: bridge
-
-=======
   auth-server:
     build:
       context: .
@@ -73,13 +63,15 @@ networks:
     environment:
       PORT: "8081"
       DATA_DIR: /app/data
-      AUTH_SERVER_ISSUER: http://localhost:8081
+      AUTH_SERVER_ISSUER: ${AUTH_SERVER_ORIGIN}
       # - VERBOSE=true
       # - LOG_FILE=/data/debug.log
     ports:
       - "8081:8081"
     volumes:
       - ./data/auth:/app/data
+    networks:
+      - training-network
 
   resource-server:
     build:
@@ -88,9 +80,9 @@ networks:
     environment:
       PORT: "8082"
       DATA_DIR: /app/data
-      RESOURCE_SERVER_ISSUER: http://localhost:8082
-      AUTH_SERVER_ISSUER: http://localhost:8081
-      AUTH_SERVER_JWKS_URL: http://auth-server:8081/oauth/jwks.json
+      RESOURCE_SERVER_ISSUER: ${RESOURCE_SERVER_ORIGIN}
+      AUTH_SERVER_ISSUER: ${AUTH_SERVER_ORIGIN}
+      AUTH_SERVER_JWKS_URL: ${AUTH_SERVER_ORIGIN}/oauth/jwks.json
       # - VERBOSE=true
       # - LOG_FILE=/data/debug.log
     ports:
@@ -99,6 +91,8 @@ networks:
       - auth-server
     volumes:
       - ./data/resource:/app/data
+    networks:
+      - training-network
 
   requesting-app:
     build:
@@ -108,11 +102,11 @@ networks:
       PORT: "3000"
       DATA_DIR: /app/data
       WEB_DIST_DIR: /app/web/dist
-      REQUESTING_APP_BASE_URL: http://localhost:3000
-      AUTH_SERVER_ISSUER: http://localhost:8081
-      AUTH_SERVER_INTERNAL_URL: http://auth-server:8081
-      RESOURCE_SERVER_ISSUER: http://localhost:8082
-      RESOURCE_SERVER_INTERNAL_URL: http://resource-server:8082
+      REQUESTING_APP_BASE_URL: ${REQUESTING_APP_ORIGIN}
+      AUTH_SERVER_ISSUER: ${AUTH_SERVER_ORIGIN}
+      AUTH_SERVER_INTERNAL_URL: ${AUTH_SERVER_ORIGIN}
+      RESOURCE_SERVER_ISSUER: ${RESOURCE_SERVER_ORIGIN}
+      RESOURCE_SERVER_INTERNAL_URL: ${RESOURCE_SERVER_ORIGIN}
       # - VERBOSE=true
       # - LOG_FILE=/data/debug.log
     ports:
@@ -122,4 +116,13 @@ networks:
       - resource-server
     volumes:
       - ./data/requesting-app:/app/data
->>>>>>> NS-XAA-MCP-Demo/main
+    networks:
+      - training-network
+
+volumes:
+  pgdata: {}
+  ollama-models: {}
+
+networks:
+  training-network:
+    driver: bridge

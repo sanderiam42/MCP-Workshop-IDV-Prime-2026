@@ -99,7 +99,7 @@ func (s *Service) handleDashboard(w http.ResponseWriter, r *http.Request) {
 		Auth:     authPayload,
 		Resource: resourcePayload,
 		Flows:    toAnySlice(flows),
-		Snippets: BuildSnippets(email, clientID),
+		Snippets: BuildSnippets(email, clientID, s.publicBase),
 		Selection: map[string]string{
 			"user_email": email,
 			"client_id":  clientID,
@@ -146,7 +146,7 @@ func (s *Service) handleCreateClient(w http.ResponseWriter, r *http.Request) {
 		"redirect_uri": strings.TrimSpace(payload["redirect_uri"]),
 	}
 	if clientPayload["redirect_uri"] == "" {
-		clientPayload["redirect_uri"] = "http://localhost:3000/callback"
+		clientPayload["redirect_uri"] = s.publicBase + "/callback"
 	}
 
 	authStatus, authBody, err := s.postJSON(r.Context(), s.runner.authPublicBase+"/api/clients", clientPayload)
@@ -205,7 +205,7 @@ func (s *Service) handleProvisionClient(w http.ResponseWriter, r *http.Request) 
 		"id":           clientID,
 		"name":         name,
 		"secret":       secret,
-		"redirect_uri": "http://localhost:3000/callback",
+		"redirect_uri": s.publicBase + "/callback",
 	}
 
 	authStatus, authBody, err := s.postJSON(r.Context(), s.runner.authPublicBase+"/api/clients", clientPayload)
