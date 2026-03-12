@@ -118,6 +118,11 @@ make reset-state
 
 ## Deployment Modes
 
+> **Note:** `.env` lives at the repository root (not inside `xaa-demo/`) so that both
+> `docker compose up` (which auto-loads `.env` from the directory containing
+> `docker-compose.yml`) and `go run` workflows can source a single canonical file with
+> no duplication.
+
 Services discover each other using URLs set in `.env`. Two modes are available — pick
 exactly one by editing `.env` and uncommenting the appropriate block.
 

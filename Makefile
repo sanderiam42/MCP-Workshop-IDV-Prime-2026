@@ -20,10 +20,10 @@ build-stdio-linux:
 	  go build -o ../bin/xaa-mcp-stdio-linux-amd64 ./cmd/xaa-mcp-stdio
 
 up:
-	docker compose --env-file xaa-demo/.env up --build
+	docker compose up --build
 
 down:
-	docker compose --env-file xaa-demo/.env down
+	docker compose down
 
 reset-state:
 	rm -f data/auth/auth-state.json
