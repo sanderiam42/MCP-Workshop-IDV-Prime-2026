@@ -54,7 +54,7 @@ echo "=== Step 4: MCP initialize ==="
 curl -s -X POST "${RESOURCE_URL}/mcp" \
   -H "Authorization: Bearer ${ACCESS_TOKEN}" \
   -H "Content-Type: application/json" \
-  -d '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-03-26","capabilities":{},"clientInfo":{"name":"xaa-demo-sh","version":"1.0.0"}}}' | jq .
+  -d '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{},"clientInfo":{"name":"xaa-demo-sh","version":"1.0.0"}}}' | jq .
 
 echo "=== Step 5: List todos ==="
 curl -s -X POST "${RESOURCE_URL}/mcp" \

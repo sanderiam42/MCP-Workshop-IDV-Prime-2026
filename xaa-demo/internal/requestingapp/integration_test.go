@@ -84,7 +84,7 @@ func TestEndToEndBrowserAndHostBridge(t *testing.T) {
 		"id":      1,
 		"method":  "initialize",
 		"params": map[string]any{
-			"protocolVersion": "2025-11-25",
+			"protocolVersion": "2024-11-05",
 		},
 	})
 	if initializeResult["result"] == nil {
