@@ -137,7 +137,7 @@ func bridgeTools() []mcp.Tool {
 	return []mcp.Tool{
 		{
 			Name:        "list_todos",
-			Description: "List todos for the selected XAA demo user.",
+			Description: "List all todos.",
 			InputSchema: map[string]any{
 				"type":                 "object",
 				"properties":           map[string]any{},
@@ -146,7 +146,7 @@ func bridgeTools() []mcp.Tool {
 		},
 		{
 			Name:        "add_todo",
-			Description: "Add a todo for the selected XAA demo user.",
+			Description: "Add a new todo.",
 			InputSchema: map[string]any{
 				"type": "object",
 				"properties": map[string]any{
@@ -158,7 +158,7 @@ func bridgeTools() []mcp.Tool {
 		},
 		{
 			Name:        "toggle_todo",
-			Description: "Toggle a todo for the selected XAA demo user.",
+			Description: "Mark a todo complete or incomplete by its ID.",
 			InputSchema: map[string]any{
 				"type": "object",
 				"properties": map[string]any{
@@ -170,7 +170,7 @@ func bridgeTools() []mcp.Tool {
 		},
 		{
 			Name:        "delete_todo",
-			Description: "Delete a todo for the selected XAA demo user.",
+			Description: "Delete a todo by its ID.",
 			InputSchema: map[string]any{
 				"type": "object",
 				"properties": map[string]any{
