@@ -1,5 +1,6 @@
 data/
-bin/
+bin/*
+!bin/.gitkeep
 xaa-demo/web/node_modules
 xaa-demo/web/dist
 xaa-demo/web/*.tsbuildinfo
