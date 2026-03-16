@@ -2,7 +2,7 @@
 aws ssm start-session --target <your_instance_id> --document-name AWS-StartInteractiveCommand --parameters command="cd ~ && exec bash -l"
 cd MCP-Workshop-IDV-Prime-2026
 grep core docker-compose.yml
-docker compose start
+docker compose up --build -d
 aws s3 cp s3://mcp-lab-instance-setup/xaa-mcp-stdio-linux-amd64 ./bin/xaa-mcp-stdio-linux-amd6xaa-mcp-stdio-linux-amd644
 docker cp ./bin/xaa-mcp-stdio-linux-amd64 mcp-workshop-idv-prime-2026-client-1:/root/
 docker exec -it mcp-workshop-idv-prime-2026-client-1 bash
