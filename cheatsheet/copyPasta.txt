@@ -3,7 +3,7 @@ aws ssm start-session --target <your_instance_id> --document-name AWS-StartInter
 cd MCP-Workshop-IDV-Prime-2026
 grep core docker-compose.yml
 docker compose start
-aws s3 cp s3://mcp-lab-instance-setup/xaa-mcp-stdio-linux-amd64 ./bin/xaa-mcp-stdio-linux-amd64
+aws s3 cp s3://mcp-lab-instance-setup/xaa-mcp-stdio-linux-amd64 ./bin/xaa-mcp-stdio-linux-amd6xaa-mcp-stdio-linux-amd644
 docker cp ./bin/xaa-mcp-stdio-linux-amd64 mcp-workshop-idv-prime-2026-client-1:/root/
 docker exec -it mcp-workshop-idv-prime-2026-client-1 bash
 
@@ -11,6 +11,7 @@ docker exec -it mcp-workshop-idv-prime-2026-client-1 bash
 cd ~
 git clone https://github.com/ausboss/mcp-ollama-agent
 git clone https://github.com/sanderiam42/MCP-Workshop-IDV-Prime-2026
+chmod +x xaa-mcp-stdio-linux-amd64
 cd mcp-ollama-agent/
 cp mcp-config.json ORIG.mcp-config.json
 cp ../MCP-Workshop-IDV-Prime-2026/docker-compose-lab-mcp-config-files/WORKING.mcp-config.json mcp-config.json
@@ -26,7 +27,7 @@ cp ../MCP-Workshop-IDV-Prime-2026/docker-compose-lab-mcp-config-files/SECRETWRAP
 cp ../MCP-Workshop-IDV-Prime-2026/cheatsheet/SUPPLIEDSECRET.mcp-config.json mcp-config.json
 
 # you need to get your IdP's client ID and secret 
-curl -s -X POST http://auth-server:3000/api/clients/provision -H "Content-Type: application/json" -d '{"name": "Deadpool"}' | jq .
+curl -s -X POST http://requesting-app:3000/api/clients/provision -H "Content-Type: application/json" -d '{"name": "Deadpool"}' | jq .
 cp ../MCP-Workshop-IDV-Prime-2026/docker-compose-lab-mcp-config-files/XAAIDJAG.mcp-config.json mcp-config.json
 
 # you need to take the values of the client ID and secret and edit them into the mcp-config.json
