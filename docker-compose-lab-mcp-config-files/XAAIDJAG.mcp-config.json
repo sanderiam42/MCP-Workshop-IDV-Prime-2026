@@ -1,7 +1,7 @@
 {
   "mcpServers": {
     "xaa-demo": {
-      "command": "/absolute/path/to/bin/xaa-mcp-stdio-linux-amd64",
+      "command": "/root/xaa-mcp-stdio-linux-amd64",
       "args": [],
       "env": {
         "XAA_BRIDGE_URL": "http://requesting-app:3000/host/mcp",
