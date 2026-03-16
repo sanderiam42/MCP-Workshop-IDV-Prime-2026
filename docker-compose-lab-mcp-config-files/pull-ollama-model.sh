@@ -71,16 +71,16 @@ if [ $ATTEMPTS -eq $MAX_ATTEMPTS ]; then
   show_error 'Ollama API did not become ready within 2.5 minutes. Please check the ollama service logs.'
 fi
 
-echo 'Pulling llama3.2:1b model...'
-if ! docker exec "$OLLAMA_CONTAINER" ollama pull llama3.2:1b; then
-  show_error 'Failed to pull llama3.2:1b model. Check the error messages above for details.'
+echo 'Pulling ministral-3:3b model...'
+if ! docker exec "$OLLAMA_CONTAINER" ollama pull ministral-3:3b; then
+  show_error 'Failed to pull ministral-3:3b model. Check the error messages above for details.'
 fi
 
 echo ''
 echo '========================================'
 echo 'SUCCESS!'
 echo '========================================'
-echo 'Model llama3.2:1b has been pulled successfully!'
+echo 'Model ministral-3:3b has been pulled successfully!'
 echo '========================================'
 echo ''
 
