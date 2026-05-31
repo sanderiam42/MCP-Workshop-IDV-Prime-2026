@@ -1,442 +1,139 @@
 # XAA MCP Demo
 
-This repository is a lightweight, Dockerized demo of Cross App Access (XAA) for MCP.
+This repository is the hands-on lab environment for the **[AI + Identity Workshop at Identiverse 2026](https://identiverse.com/idv26/ai-identity-workshop/)**. This document walks through the lab as it is run during the workshop — on a cloud-hosted EC2 instance, accessed via CLI, with no browser required.
 
-It includes:
+The Docker Compose environment here supports more than the workshop lab path: it includes a browser UI, a host-facing MCP bridge for Cursor and Codex, and a full XAA token flow you can exercise directly with curl. Those capabilities are documented in [SUPPLEMENTARY.md](SUPPLEMENTARY.md) for anyone running the environment on their own outside the workshop context.
 
-- a demo OIDC / enterprise IdP service
-- a protected MCP resource server in front of a todo list
-- a requesting app with a browser UI
-- a host-facing MCP bridge that real MCP hosts such as Cursor or Codex can connect to
-- **authorization code + PKCE flow** (user-delegated): full OIDC login → ID token → ID-JAG → resource access
-- **client credentials flow** (machine-to-machine): client authenticates directly → ID-JAG → resource access, no user needed
+## What This Lab Covers
 
-The browser UI shows the full sequence for both flows.
+The lab walks through MCP security progressively — each phase introduces a new concept by swapping only the MCP client configuration:
 
-The host-facing bridge is the practical integration point for real MCP hosts. Cursor or Codex connects to the requesting app's remote MCP endpoint, and the bridge performs the upstream XAA flow before calling the protected MCP resource server.
+1. **WORKING** — MCP tools connect to a live PostgreSQL database with credentials hardcoded in the config. It works, but the secrets are exposed.
+2. **SECRETWRAPPED** — same tools, but credentials are fetched at runtime from AWS Secrets Manager via an MCP secret wrapper. No secrets in the config file.
+3. **XAAIDJAG** — adds an XAA-protected MCP resource server. The agent must obtain an ID token, exchange it for an ID-JAG (cross-app authorization grant), and present a resource access token to reach the protected server.
 
-## Services
+## Lab Environment
 
-- `auth-server`
-  - demo OIDC authorization server
-  - static demo-client registry
-  - enrolled users by email
-  - token exchange endpoint that issues ID-JAG JWTs
-  - client credentials grant that issues a machine ID token (no user); token exchange then produces the ID-JAG
+The lab runs inside a Docker Compose environment on a cloud-hosted EC2 instance. You access it via AWS CloudShell using SSM — no SSH key required. All interaction with the AI agent happens through a CLI chat UI; there is no browser component for the core lab exercises.
 
-- `resource-server`
-  - protected MCP server
-  - OAuth protected resource metadata
-  - JWT bearer grant endpoint that accepts ID-JAG assertions
-  - per-user todo storage
+Services running inside Docker Compose:
 
-- `requesting-app`
-  - browser UI
-  - XAA-aware MCP client (authorization code + PKCE and client credentials)
-  - host-facing remote MCP bridge for Cursor/Codex
+| Service | Purpose |
+|---|---|
+| `postgres` | Database with sample movie data |
+| `ollama` | Locally hosted LLM (model configured via `~/lab-config.env`) |
+| `client` | Node.js container you work inside |
+| `auth-server` | Demo OIDC / enterprise IdP |
+| `resource-server` | XAA-protected MCP server (todo list) |
+| `requesting-app` | XAA-aware requesting app + client provisioning API |
 
-## Layout
+## Lab Walkthrough
 
-- `cmd/auth-server`
-- `cmd/resource-server`
-- `cmd/requesting-app`
-- `internal/authserver`
-- `internal/resourceserver`
-- `internal/requestingapp`
-- `internal/shared`
-- `web`
-- `examples`
+### Phase 0 — Connect to Your Lab Machine
 
-## Quick Start
-
-### Local prerequisites
-
-- Go 1.25+
-- Node.js 20+
-- Docker with `docker compose`
-
-### Run tests
+From AWS CloudShell:
 
 ```bash
-go test ./...
+aws ssm start-session --target <your_instance_id> \
+  --document-name AWS-StartInteractiveCommand \
+  --parameters command="cd ~ && exec bash -l"
 ```
 
-### Build the frontend
+### Phase 1 — Start the Services
 
 ```bash
-npm install --prefix web
-npm run build --prefix web
+cd $WORKSHOP_REPO_DIR
+./start-lab.sh --build -d
 ```
 
-The manual frontend build is mainly for local non-Docker runs. The requesting-app container build already compiles the frontend bundle during `docker compose up --build`.
+`start-lab.sh` sources `~/lab-config.env`, substitutes the configured model name and repo references into local files, then runs Docker Compose.
 
-### Start the full demo
+Copy the MCP bridge binary from S3 into the client container:
 
 ```bash
-docker compose up --build
+aws s3 cp s3://mcp-lab-instance-setup/xaa-mcp-stdio-linux-amd64 ./bin/xaa-mcp-stdio-linux-amd64
+docker cp ./bin/xaa-mcp-stdio-linux-amd64 $CLIENT_CONTAINER:/root/
 ```
 
-### Provision a client
-
-After the services are running, create a client to use with the demo (the secret is returned only once):
+Open a shell inside the client container:
 
 ```bash
-curl -s -X POST http://localhost:3000/api/clients/provision \
+docker exec -it $CLIENT_CONTAINER bash
+```
+
+### Phase 2 — Set Up the Agent (inside the container)
+
+```bash
+cd ~
+git clone https://github.com/ausboss/mcp-ollama-agent
+git clone $WORKSHOP_REPO
+chmod +x xaa-mcp-stdio-linux-amd64
+cd mcp-ollama-agent/
+cp mcp-config.json ORIG.mcp-config.json
+cp ../$WORKSHOP_REPO_DIR/docker-compose-lab-mcp-config-files/WORKING.mcp-config.json mcp-config.json
+npm install
+```
+
+### Phase 3 — Lab 1: WORKING (hardcoded secrets)
+
+```bash
+npm start
+```
+
+You are now in the agent chat UI talking to the locally hosted LLM. Try:
+
+```
+you're going to use the "query" tool to get info about movies from the movies table
+in the database. when you call the "query" tool be sure you label the SQL as "sql"
+in the arguments so that it works correctly
+```
+
+Exit the chat UI when done (`Ctrl+C`).
+
+### Phase 4 — Lab 2: SECRETWRAPPED (secrets from AWS)
+
+```bash
+cp ../$WORKSHOP_REPO_DIR/docker-compose-lab-mcp-config-files/SECRETWRAPPED.mcp-config.json mcp-config.json
+npm start
+```
+
+The same database query works — but the credentials are no longer in the config file. The MCP secret wrapper fetches them from AWS Secrets Manager at runtime.
+
+Exit the chat UI when done (`Ctrl+C`).
+
+### Phase 5 — Lab 3: XAAIDJAG (XAA-protected resource)
+
+First, provision an OAuth client from the requesting app:
+
+```bash
+curl -s -X POST http://requesting-app:3000/api/clients/provision \
   -H "Content-Type: application/json" \
-  -d '{"name": "my-app"}' | jq .
+  -d '{"name": "Deadpool"}' | jq .
 ```
 
-Response:
-```json
-{
-  "client_id": "my-app-a1b2c3d4",
-  "client_secret": "...",
-  "auth": { ... },
-  "resource": { ... }
-}
-```
-
-Save the `client_secret` — it is not shown again. Use the returned `client_id` and `client_secret` wherever the examples below refer to `<your-client-id>` and `<your-client-secret>`.
-
-Open:
-
-- requesting app UI: [http://localhost:3000](http://localhost:3000)
-- auth server: [http://localhost:8081](http://localhost:8081)
-- resource server: [http://localhost:8082](http://localhost:8082)
-
-Stop it with:
+Save the returned `client_id` and `client_secret`. Then copy the XAA config and edit those values in:
 
 ```bash
-docker compose down
+cp ../$WORKSHOP_REPO_DIR/docker-compose-lab-mcp-config-files/XAAIDJAG.mcp-config.json mcp-config.json
+# edit client_id and client_secret into mcp-config.json
+npm start
 ```
 
-Reset local demo state with:
+The agent now obtains an ID token, exchanges it for an ID-JAG, and uses a resource access token to reach the protected MCP server — all transparently through the configured bridge.
 
-```bash
-make reset-state
-```
+## Services Reference
 
-## Deployment Modes
+- `auth-server` — demo OIDC authorization server; issues ID tokens and ID-JAG JWTs via token exchange; supports client credentials grant
+- `resource-server` — protected MCP server; accepts ID-JAG assertions via JWT bearer grant; per-user todo storage
+- `requesting-app` — XAA-aware MCP client; client provisioning API; host-facing remote MCP bridge for Cursor/Codex
 
-> **Note:** `.env` lives at the repository root (not inside `xaa-demo/`) so that both
-> `docker compose up` (which auto-loads `.env` from the directory containing
-> `docker-compose.yml`) and `go run` workflows can source a single canonical file with
-> no duplication.
+## Notes and Simplifications
 
-Services discover each other using URLs set in `.env`. Two modes are available — pick
-exactly one by editing `.env` and uncommenting the appropriate block.
-
-### Container mode (default)
-
-```
-AUTH_SERVER_ORIGIN=http://auth-server:8081
-RESOURCE_SERVER_ORIGIN=http://resource-server:8082
-REQUESTING_APP_ORIGIN=http://requesting-app:3000
-```
-
-Use this when running `docker compose up`. Inter-service calls (JWKS fetch, token
-exchange, resource calls) use Docker's internal DNS. **Do not use `localhost` values
-inside Docker Compose** — inside a container `localhost` refers to that container
-itself, not the host, so cross-service calls will fail.
-
-### Local mode (go run, no Docker)
-
-```
-AUTH_SERVER_ORIGIN=http://localhost:8081
-RESOURCE_SERVER_ORIGIN=http://localhost:8082
-REQUESTING_APP_ORIGIN=http://localhost:3000
-```
-
-Use this when running each service directly with `go run ./cmd/...`. All services
-share the host network so `localhost` resolves correctly for everything including the
-JWKS fetch. **Do not use local mode values inside Docker Compose.**
-
-### How to switch
-
-Open `.env`, comment out the active block, and uncomment the other. Then restart the
-services. Using the wrong mode results in broken inter-service calls (JWKS fetch
-failures, token exchange errors, or redirect URI mismatches).
-
-## Browser Demo
-
-### Authorization Code + PKCE Flow (User-Delegated)
-
-1. Open [http://localhost:3000](http://localhost:3000).
-2. Provision a client (see [Provision a client](#provision-a-client) above) and enter the returned client ID.
-3. Enter a demo email such as `alice@example.com`.
-4. Click `Enroll User`.
-5. Click `Run List Flow` or `Add Todo Through XAA`.
-6. Inspect the full trace, including:
-   - the initial `401` bearer challenge
-   - protected resource metadata
-   - OIDC metadata
-   - auth code redirect
-   - ID token
-   - ID-JAG
-   - resource access token
-   - final MCP requests and responses
-
-### Client Credentials Flow (Machine-to-Machine, Browser)
-
-1. Provision a client first (see [Provision a client](#provision-a-client) above) and save the returned credentials.
-2. Open [http://localhost:3000](http://localhost:3000).
-3. Leave the user email field blank (no user enrollment needed).
-4. Enter the provisioned client ID and client secret.
-5. Click `Run Client Credentials Flow`.
-6. Inspect the trace — you will see:
-   - the initial `401` bearer challenge
-   - protected resource metadata
-   - OIDC metadata
-   - `client_credentials` grant → ID token (machine ID token with sub=client_id)
-   - token exchange → ID-JAG
-   - resource access token
-   - final MCP requests and responses
-
-## Register a Service Client
-
-Provision a client with a generated ID and secret (the secret is returned only once):
-
-```bash
-curl -s -X POST http://localhost:3000/api/clients/provision \
-  -H "Content-Type: application/json" \
-  -d '{"name": "my-service"}' | jq .
-```
-
-Response:
-```json
-{
-  "client_id": "my-service-a1b2c3d4",
-  "client_secret": "abc123...",
-  "auth": { ... },
-  "resource": { ... }
-}
-```
-
-Save the `client_secret` — it is not shown again. Each call to `/api/clients/provision` generates a fresh, unique client ID and secret.
-
-Use those values in your MCP config (see Cursor / Codex sections below).
-
-## Use From Cursor
-
-The bridge endpoint is:
-
-```text
-http://localhost:3000/host/mcp
-```
-
-Example config is in `examples/cursor.mcp.json`.
-
-Copy that example into a local workspace file at `.cursor/mcp.json` if you want Cursor to pick it up automatically for this repo.
-
-### User-delegated flow (authorization code + PKCE)
-
-```json
-{
-  "mcpServers": {
-    "xaa-demo-user": {
-      "url": "http://localhost:3000/host/mcp",
-      "headers": {
-        "X-Demo-User": "alice@example.com",
-        "X-Demo-Client": "<your-client-id>"
-      }
-    }
-  }
-}
-```
-
-### Machine-to-machine flow (client credentials)
-
-Provision a client first (see [Register a Service Client](#register-a-service-client)), then:
-
-```json
-{
-  "mcpServers": {
-    "xaa-demo-machine": {
-      "url": "http://localhost:3000/host/mcp",
-      "headers": {
-        "X-Demo-Client": "<your-client-id>",
-        "X-Demo-Client-Secret": "<your-client-secret>"
-      }
-    }
-  }
-}
-```
-
-After adding the server, ask Cursor to list todos, add a todo, toggle a todo, or delete a todo. Each bridge tool call performs the upstream XAA flow before talking to the protected resource server.
-
-## Use From Codex
-
-Example config is in `examples/codex.config.toml`.
-
-### User-delegated flow
-
-```toml
-[mcp_servers.xaa_demo_user]
-url = "http://localhost:3000/host/mcp"
-http_headers = { "X-Demo-User" = "alice@example.com", "X-Demo-Client" = "<your-client-id>" }
-```
-
-### Machine-to-machine flow
-
-Provision a client first (see [Register a Service Client](#register-a-service-client)), then:
-
-```toml
-[mcp_servers.xaa_demo_machine]
-url = "http://localhost:3000/host/mcp"
-http_headers = { "X-Demo-Client" = "<your-client-id>", "X-Demo-Client-Secret" = "<your-client-secret>" }
-```
-
-Once configured, Codex can call the same bridge tools as Cursor.
-
-## Command-Line Demo — Full XAA Flow
-
-`examples/xaa-demo.sh` shows the complete three-step token chain started by client credentials, passing each token explicitly to the next step:
-
-1. **CC grant** → ID token (machine identity token with `sub=client_id`)
-2. **Token exchange** → ID-JAG (cross-app authorization grant)
-3. **JWT bearer** → resource access token
-4. MCP calls using the access token
-
-Provision a client, then run the script:
-
-```bash
-docker compose up --build
-curl -s -X POST http://localhost:3000/api/clients/provision \
-  -H "Content-Type: application/json" \
-  -d '{"name": "demo-script"}' | jq .
-# Paste the returned client_id and client_secret into examples/xaa-demo.sh
-chmod +x examples/xaa-demo.sh && examples/xaa-demo.sh
-```
-
-### Step-by-step via curl
-
-Provision a client first, then:
-
-```bash
-CLIENT_ID="<your-client-id>"
-CLIENT_SECRET="<your-client-secret>"
-```
-
-#### Step 1 — CC grant → ID token
-
-```bash
-BASIC=$(echo -n "${CLIENT_ID}:${CLIENT_SECRET}" | base64)
-ID_TOKEN=$(curl -s -X POST http://localhost:8081/token \
-  -H "Authorization: Basic ${BASIC}" \
-  -H "Content-Type: application/x-www-form-urlencoded" \
-  -d "grant_type=client_credentials" \
-  -d "scope=mcp:read mcp:write" | jq -r '.id_token')
-```
-
-#### Step 2 — Token exchange → ID-JAG
-
-```bash
-ID_JAG=$(curl -s -X POST http://localhost:8081/token \
-  -H "Authorization: Basic ${BASIC}" \
-  -H "Content-Type: application/x-www-form-urlencoded" \
-  -d "grant_type=urn:ietf:params:oauth:grant-type:token-exchange" \
-  -d "subject_token=${ID_TOKEN}" \
-  -d "subject_token_type=urn:ietf:params:oauth:token-type:id_token" \
-  -d "requested_token_type=urn:ietf:params:oauth:token-type:id-jag" \
-  -d "audience=http://localhost:8082" \
-  -d "resource=http://localhost:8082/mcp" \
-  -d "scope=mcp:read mcp:write" | jq -r '.access_token')
-```
-
-#### Step 3 — JWT bearer → access token
-
-```bash
-ACCESS_TOKEN=$(curl -s -X POST http://localhost:8082/oauth/token \
-  -H "Authorization: Basic ${BASIC}" \
-  -H "Content-Type: application/x-www-form-urlencoded" \
-  -d "grant_type=urn:ietf:params:oauth:grant-type:jwt-bearer" \
-  -d "assertion=${ID_JAG}" \
-  -d "scope=mcp:read mcp:write" | jq -r '.access_token')
-```
-
-#### Step 4 — Call an MCP tool directly
-
-```bash
-curl -s -X POST http://localhost:8082/mcp \
-  -H "Authorization: Bearer ${ACCESS_TOKEN}" \
-  -H "Content-Type: application/json" \
-  -d '{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"list_todos","arguments":{}}}' | jq .
-```
-
-#### Via the bridge (all three steps performed automatically)
-
-```bash
-curl -s -X POST http://localhost:3000/host/mcp \
-  -H "Content-Type: application/json" \
-  -H "X-Demo-Client: ${CLIENT_ID}" \
-  -H "X-Demo-Client-Secret: ${CLIENT_SECRET}" \
-  -d '{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"list_todos","arguments":{}}}' | jq .
-```
-
-## Verbose Debug Logging
-
-Set `VERBOSE=true` on any service to enable full HTTP and token logging. Set `LOG_FILE` to write to a file (default: stderr only).
-
-Example (docker compose — uncomment in `docker-compose.yml`):
-```yaml
-# - VERBOSE=true
-# - LOG_FILE=/data/debug.log
-```
-
-Example (local run):
-```bash
-VERBOSE=true LOG_FILE=/tmp/xaa-debug.log ./auth-server
-```
-
-The log captures:
-- Every inbound and outbound HTTP request: method, URL, headers, body
-- Every HTTP response: status, headers, body
-- Every token issued or received: type, claims, expiry
-- Every flow step as it executes
-
-## Verified Flow
-
-This repo was validated with:
-
-- `go test ./...`
-- `npm run build --prefix web`
-- `docker compose up --build`
-- live HTTP checks for:
-  - user enrollment
-  - browser-triggered XAA flow (authorization code + PKCE)
-  - browser-triggered client credentials flow
-  - host-facing MCP `tools/call` (both user-delegated and machine-to-machine)
-
-## Notes And Simplifications
-
-- There is no standalone enterprise IdP product here; the auth server simulates that role.
+- The auth server simulates an enterprise IdP — it is not a real IdP product.
 - Demo users are stored by email in local JSON files.
 - There is no OAuth Dynamic Client Registration.
-- The host-facing bridge is intentionally the real-world integration point for Cursor/Codex.
-- The MCP implementation is intentionally small and focuses on:
-  - `initialize`
-  - `notifications/initialized`
-  - `tools/list`
-  - `tools/call`
-  - `resources/list`
-  - `resources/read`
+- The MCP implementation covers `initialize`, `notifications/initialized`, `tools/list`, `tools/call`, `resources/list`, and `resources/read`.
 
-## Local-Only Generated Files
+## Going Further
 
-These files are intentionally kept out of Git:
-
-- `data/` state JSON and signing keys
-- `.cursor/mcp.json`
-- `web/dist/`
-- `web/node_modules/`
-- `web/*.tsbuildinfo`
-
-## Handy Commands
-
-```bash
-make test
-make web-build
-make up
-make down
-make reset-state
-```
+For running the demo locally outside the workshop environment, using it from a browser, connecting Cursor or Codex, or stepping through the XAA token flow manually with curl, see [SUPPLEMENTARY.md](SUPPLEMENTARY.md).

@@ -1,20 +1,20 @@
 # on your cloudshell prompt - this gets you to your actual lab machine for the first steps
 aws ssm start-session --target <your_instance_id> --document-name AWS-StartInteractiveCommand --parameters command="cd ~ && exec bash -l"
-cd MCP-Workshop-IDV-Prime-2026
+cd __WORKSHOP_REPO_DIR__
 grep core docker-compose.yml
-docker compose up --build -d
+./start-lab.sh --build -d
 aws s3 cp s3://mcp-lab-instance-setup/xaa-mcp-stdio-linux-amd64 ./bin/xaa-mcp-stdio-linux-amd64
-docker cp ./bin/xaa-mcp-stdio-linux-amd64 mcp-workshop-idv-prime-2026-client-1:/root/
-docker exec -it mcp-workshop-idv-prime-2026-client-1 bash
+docker cp ./bin/xaa-mcp-stdio-linux-amd64 __CLIENT_CONTAINER__:/root/
+docker exec -it __CLIENT_CONTAINER__ bash
 
 # you are now working in one of the docker containers you started which is inside the lab
 cd ~
 git clone https://github.com/ausboss/mcp-ollama-agent
-git clone https://github.com/sanderiam42/MCP-Workshop-IDV-Prime-2026
+git clone __WORKSHOP_REPO__
 chmod +x xaa-mcp-stdio-linux-amd64
 cd mcp-ollama-agent/
 cp mcp-config.json ORIG.mcp-config.json
-cp ../MCP-Workshop-IDV-Prime-2026/docker-compose-lab-mcp-config-files/WORKING.mcp-config.json mcp-config.json
+cp ../__WORKSHOP_REPO_DIR__/docker-compose-lab-mcp-config-files/WORKING.mcp-config.json mcp-config.json
 npm install
 npm start
 
@@ -22,12 +22,12 @@ npm start
 you're going to use the "query" tool to get info about movies from the movies table in the database. when you call the "query" tool be sure you lable the SQL as "sql" in the arguments so that it works correctly
 
 # you are back at the command prompt of the container's OS, and swapping in new MCP client configs
-cp ../MCP-Workshop-IDV-Prime-2026/cheatsheet/BROKEN.mcp-config.json ./mcp-config.json
-cp ../MCP-Workshop-IDV-Prime-2026/docker-compose-lab-mcp-config-files/SECRETWRAPPED.mcp-config.json mcp-config.json
-cp ../MCP-Workshop-IDV-Prime-2026/cheatsheet/SUPPLIEDSECRET.mcp-config.json mcp-config.json
+cp ../__WORKSHOP_REPO_DIR__/cheatsheet/BROKEN.mcp-config.json ./mcp-config.json
+cp ../__WORKSHOP_REPO_DIR__/docker-compose-lab-mcp-config-files/SECRETWRAPPED.mcp-config.json mcp-config.json
+cp ../__WORKSHOP_REPO_DIR__/cheatsheet/SUPPLIEDSECRET.mcp-config.json mcp-config.json
 
-# you need to get your IdP's client ID and secret 
+# you need to get your IdP's client ID and secret
 curl -s -X POST http://requesting-app:3000/api/clients/provision -H "Content-Type: application/json" -d '{"name": "Deadpool"}' | jq .
-cp ../MCP-Workshop-IDV-Prime-2026/docker-compose-lab-mcp-config-files/XAAIDJAG.mcp-config.json mcp-config.json
+cp ../__WORKSHOP_REPO_DIR__/docker-compose-lab-mcp-config-files/XAAIDJAG.mcp-config.json mcp-config.json
 
 # you need to take the values of the client ID and secret and edit them into the mcp-config.json

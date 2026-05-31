@@ -1,5 +1,7 @@
 #!/bin/sh
 
+: "${OLLAMA_MODEL:?OLLAMA_MODEL env var is required}"
+
 show_error() {
   echo ''
   echo '========================================'
@@ -71,16 +73,16 @@ if [ $ATTEMPTS -eq $MAX_ATTEMPTS ]; then
   show_error 'Ollama API did not become ready within 2.5 minutes. Please check the ollama service logs.'
 fi
 
-echo 'Pulling ministral-3:3b model...'
-if ! docker exec "$OLLAMA_CONTAINER" ollama pull ministral-3:3b; then
-  show_error 'Failed to pull ministral-3:3b model. Check the error messages above for details.'
+echo "Pulling ${OLLAMA_MODEL} model..."
+if ! docker exec "$OLLAMA_CONTAINER" ollama pull "${OLLAMA_MODEL}"; then
+  show_error "Failed to pull ${OLLAMA_MODEL} model. Check the error messages above for details."
 fi
 
 echo ''
 echo '========================================'
 echo 'SUCCESS!'
 echo '========================================'
-echo 'Model ministral-3:3b has been pulled successfully!'
+echo "Model ${OLLAMA_MODEL} has been pulled successfully!"
 echo '========================================'
 echo ''
 

@@ -30,6 +30,8 @@ services:
     image: docker:cli
     depends_on:
       - ollama
+    environment:
+      OLLAMA_MODEL: __OLLAMA_MODEL__
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
       - ./docker-compose-lab-mcp-config-files/pull-ollama-model.sh:/pull-ollama-model.sh:ro
