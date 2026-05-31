@@ -1,8 +1,16 @@
-# Supplementary: Local Dev, Browser Demo, and Advanced Usage
+# Supplementary: XAA Demo Details and Local Development
 
-This document covers running the XAA demo outside the workshop cloud environment — local development, the browser UI, Cursor/Codex integration, and the full curl-based token flow walkthrough.
+> **Workshop attendees:** Nothing in this document is required to complete the lab exercises. This is supplementary material for exploring the XAA demo beyond the workshop, running the environment self-hosted, or understanding the implementation in depth.
 
-For the primary workshop lab steps, see [README.md](README.md).
+For the workshop lab steps, see [README.md](README.md).
+
+## XAA Demo Services
+
+The Docker Compose environment includes three services that implement the XAA demo:
+
+- `auth-server` — demo OIDC authorization server; issues ID tokens and ID-JAG JWTs via token exchange; supports client credentials and authorization code grants
+- `resource-server` — XAA-protected MCP server; accepts ID-JAG assertions via JWT bearer grant; per-user todo storage
+- `requesting-app` — XAA-aware MCP client; client provisioning API; host-facing remote MCP bridge for Cursor/Codex
 
 ## Local Prerequisites
 
@@ -32,6 +40,8 @@ The manual frontend build is mainly for local non-Docker runs. The requesting-ap
 ```bash
 docker compose up --build
 ```
+
+> **Note:** On workshop EC2 lab instances, use `./start-lab.sh --build -d` instead — it sources `~/lab-config.env` and substitutes the configured model and repo values before starting Docker Compose.
 
 ### Provision a client
 
