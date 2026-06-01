@@ -16,6 +16,11 @@ CLIENT_CONTAINER="${OLLAMA_CONTAINER/ollama/client}"
 
 export OLLAMA_MODEL OLLAMA_CONTAINER CLIENT_CONTAINER WORKSHOP_REPO WORKSHOP_REPO_DIR
 
+# Persist CLIENT_CONTAINER to lab-config.env so it survives re-source in the parent shell
+if ! grep -q '^CLIENT_CONTAINER=' "$LAB_ENV"; then
+  echo "CLIENT_CONTAINER=${CLIENT_CONTAINER}" >> "$LAB_ENV"
+fi
+
 echo "Lab config loaded:"
 echo "  OLLAMA_MODEL=${OLLAMA_MODEL}"
 echo "  OLLAMA_CONTAINER=${OLLAMA_CONTAINER}"

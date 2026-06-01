@@ -69,10 +69,13 @@ cd $WORKSHOP_REPO_DIR
 ./start-lab.sh --build -d
 ```
 
-`start-lab.sh` reads `~/lab-config.env`, substitutes the configured model name and repo references into local files, starts all Docker Compose services, and copies the XAA MCP bridge binary into the client container. The Ollama model pulls automatically on first run — this may take a few minutes.
+`start-lab.sh` reads `~/lab-config.env`, substitutes the configured model name and repo references into local files, starts all Docker Compose services, and copies the XAA MCP bridge binary into the client container. The Ollama model pulls automatically on first run — this may take a few minutes. It also writes `CLIENT_CONTAINER` back to `~/lab-config.env`.
 
-When it finishes, enter the container:
+When it finishes, re-source and enter the container:
 
+```bash
+source ~/lab-config.env
+```
 ```bash
 docker exec -it $CLIENT_CONTAINER bash
 ```
