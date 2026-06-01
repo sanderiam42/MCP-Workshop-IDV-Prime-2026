@@ -43,6 +43,9 @@ services:
     image: node:20-slim
     stdin_open: true
     tty: true
+    environment:
+      WORKSHOP_REPO: __WORKSHOP_REPO__
+      WORKSHOP_REPO_DIR: __WORKSHOP_REPO_DIR__
     command: >
       bash -c "
         if [ ! -f /root/.setup-complete ]; then
