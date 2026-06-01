@@ -47,4 +47,36 @@ for f in "${FILES[@]}"; do
 done
 
 echo "Done. Starting Docker Compose..."
-exec docker compose up "$@"
+docker compose up "$@"
+
+# Wait for client container, then copy the XAA MCP bridge binary into it
+XAA_BINARY="./bin/xaa-mcp-stdio-linux-amd64"
+XAA_S3="s3://mcp-lab-instance-setup/xaa-mcp-stdio-linux-amd64"
+
+echo ""
+echo "Waiting for client container to be ready..."
+ATTEMPTS=0
+MAX_ATTEMPTS=30
+while [ $ATTEMPTS -lt $MAX_ATTEMPTS ]; do
+  if docker ps --filter "name=${CLIENT_CONTAINER}" --format '{{.Names}}' | grep -q "${CLIENT_CONTAINER}"; then
+    break
+  fi
+  ATTEMPTS=$((ATTEMPTS + 1))
+  sleep 2
+done
+
+if [ $ATTEMPTS -eq $MAX_ATTEMPTS ]; then
+  echo "WARNING: Client container did not appear within 60s. Copy the binary manually:" >&2
+  echo "  aws s3 cp ${XAA_S3} ${XAA_BINARY}" >&2
+  echo "  docker cp ${XAA_BINARY} ${CLIENT_CONTAINER}:/root/" >&2
+else
+  if [ ! -f "$XAA_BINARY" ]; then
+    echo "Downloading XAA MCP bridge binary from S3..."
+    aws s3 cp "$XAA_S3" "$XAA_BINARY"
+  fi
+  echo "Copying XAA MCP bridge binary into ${CLIENT_CONTAINER}..."
+  docker cp "$XAA_BINARY" "${CLIENT_CONTAINER}:/root/"
+  echo ""
+  echo "Lab is ready. Enter the container with:"
+  echo "  docker exec -it ${CLIENT_CONTAINER} bash"
+fi

@@ -42,34 +42,40 @@ The lab runs inside a Docker Compose environment on your assigned EC2 instance. 
 From AWS CloudShell:
 
 ```bash
-aws ssm start-session --target <your_instance_id> \
-  --document-name AWS-StartInteractiveCommand \
-  --parameters command="cd ~ && exec bash -l"
+aws ssm start-session --target <your_instance_id> --document-name AWS-StartInteractiveCommand --parameters command="cd ~ && exec bash -l"
 ```
 
-The value for `<your_instance_id>` will have been sent to you along with your hosted lab information. If you do not have that information, it means your resgitration for a hosted lab did not succeed on some level.
+The value for `<your_instance_id>` will have been sent to you along with your hosted lab information. If you do not have that information, it means your resgitration for a hosted lab did not succeed on some level. Similarly, your ability to connect to the AWS account to access the CloudShell and other aspects of this hosted lab are gated on having completed the registration ahead of this point in time.
+
+You'll know you've succeeded when you see something like this: 
+```bash
+~ $ aws ssm start-session --target i-06Edcr39437Fa --document-name AWS-StartInteractiveCommand --parameters command="cd ~ && exec bash -l"
+
+Starting session with SessionId: teacher.lab-MCP-Workshop-Astrix-Academy-2026-xyshgelir33c2zo3nej5vd9cz4
+[ssm-user@ip-172-31-38-175 ~]$ 
+```
+NOTE: The instance id used in the sample output is not in the right format, so don't worry if yours is longer. 
 
 ### Start the Lab
 
+Run the following three commands in your new session:
 ```bash
 source ~/lab-config.env
+```
+```bash
 cd $WORKSHOP_REPO_DIR
+```
+```bash
 ./start-lab.sh --build -d
 ```
 
-`start-lab.sh` reads `~/lab-config.env`, substitutes the configured model name and repo references into local files, then starts all Docker Compose services. The Ollama model pulls automatically on first run — this may take a few minutes.
+`start-lab.sh` reads `~/lab-config.env`, substitutes the configured model name and repo references into local files, starts all Docker Compose services, and copies the XAA MCP bridge binary into the client container. The Ollama model pulls automatically on first run — this may take a few minutes.
 
-### Copy the Binary and Enter the Container
-
-Run these on the lab instance (not inside the container):
+When it finishes, enter the container:
 
 ```bash
-aws s3 cp s3://mcp-lab-instance-setup/xaa-mcp-stdio-linux-amd64 ./bin/xaa-mcp-stdio-linux-amd64
-docker cp ./bin/xaa-mcp-stdio-linux-amd64 $CLIENT_CONTAINER:/root/
 docker exec -it $CLIENT_CONTAINER bash
 ```
-
-The binary is the XAA MCP bridge used in Lab 3. Copying it now so it is ready when you need it.
 
 ## Lab Walkthrough
 
@@ -165,6 +171,7 @@ docker compose up ollama-model-puller
 - The auth server is a demo — it simulates an enterprise IdP but is not a real IdP product.
 - Demo users are stored by email in local JSON files; no external user store is required.
 - There is no OAuth Dynamic Client Registration — clients are provisioned via the `/api/clients/provision` endpoint.
+- The lab is using the `ministral-3:3b` model ([found here on huggingface](https://huggingface.co/mistralai/Ministral-3-3B-Instruct-2512))
 
 ### Running Outside the Workshop
 
