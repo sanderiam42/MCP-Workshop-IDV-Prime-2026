@@ -54,7 +54,9 @@ You'll know you've succeeded when you see something like this:
 Starting session with SessionId: teacher.lab-MCP-Workshop-Astrix-Academy-2026-xyshgelir33c2zo3nej5vd9cz4
 [ssm-user@ip-172-31-38-175 ~]$ 
 ```
-NOTE: The instance id used in the sample output is not in the right format, so don't worry if yours is longer. 
+***NOTE*** :: The instance id used in the sample output is not in the right format, so don't worry if yours is longer. 
+
+***NOTE*** :: The command prompt (i.e., `[ssm-user@ip-172-31-38-175 ~]$` in the sample output above) contians the IP address of the machine. Yours will be different numbers bu thte same format.
 
 ### Start the Lab
 
@@ -88,6 +90,9 @@ All commands below run **inside the client container** unless noted otherwise.
 
 ```bash
 cd ~ && git clone https://github.com/ausboss/mcp-ollama-agent && git clone $WORKSHOP_REPO
+```
+```bash
+../$WORKSHOP_REPO_DIR/apply-lab-config.sh
 ```
 ```bash
 chmod +x xaa-mcp-stdio-linux-amd64 && cd mcp-ollama-agent/

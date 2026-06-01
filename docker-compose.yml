@@ -46,6 +46,7 @@ services:
     environment:
       WORKSHOP_REPO: __WORKSHOP_REPO__
       WORKSHOP_REPO_DIR: __WORKSHOP_REPO_DIR__
+      OLLAMA_MODEL: __OLLAMA_MODEL__
     command: >
       bash -c "
         if [ ! -f /root/.setup-complete ]; then
