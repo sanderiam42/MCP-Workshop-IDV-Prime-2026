@@ -1,10 +1,20 @@
 # MCP Workshop Lab
 
-This repository is the hands-on lab environment for the **[AI + Identity Workshop at Identiverse 2026](https://identiverse.com/idv26/ai-identity-workshop/)**. Lab instances are pre-configured EC2 machines accessed via AWS CloudShell — no SSH key, no browser required. All interaction with the AI agent happens through a CLI chat interface.
+This repository is the hands-on lab environment for the **[AI + Identity Workshop at Identiverse 2026](https://identiverse.com/idv26/ai-identity-workshop/)** aka "The MCP Hackathon". Lab instances are pre-configured EC2 machines accessed via AWS CloudShell. All interaction with the LLM powered chat using MCP happens through a CLI chat interface.
+
+## Credits for the contents of the lab
+
+The chat & MCP elements of the lab leverage the work of [@ausboos](https://github.com/ausboss) from the project [mcp-ollama-agent](https://github.com/ausboss/mcp-ollama-agent). Many props go out to that person for making this all possible. 
+
+The [XAA / IDJAG](https://datatracker.ietf.org/doc/draft-ietf-oauth-identity-assertion-authz-grant/) pieces come from the ongoing work from that project with special thanks to [Aaron Parecki](https://datatracker.ietf.org/person/aaron@parecki.com) of Okta for his help making some key choices. 
+
+Last but not least, thanks to my partner in crime for this event [Nick Steele](https://github.com/nicksteele-oai), who wrote the [toy IdP with XAA support](https://github.com/sanderiam-astrix/MCP-Workshop-Astrix-Academy-2026/commit/fe6632ecac93b610d5fdbfb8f5fd9002b6b85f75) used in the labs. 
 
 ## What the Lab Covers
 
-The lab walks through MCP security progressively, with each phase swapping only the MCP client configuration:
+You will be dropped into a lab with a working LLM locally hosted on a container which is accessed via a chat UI that has tools ican access via MCP. The point of the lab is to alter the MCP configurations to access different tools in different ways, learning about the structure of MCP, how it's secured, and patterns you can use in your own IAM efforts to lock down MCP security specifically and LLM powered systems security in general. 
+
+The lab walks through MCP security progressively, with each phase swapping only the MCP client configuration. There are three MCP client configs packaged in this repo which act as jumping off points for the 3 different phases of the lab work:
 
 1. **WORKING** — Credentials hardcoded in the config. The tools work, but secrets are exposed.
 2. **SECRETWRAPPED** — Credentials fetched at runtime from AWS Secrets Manager. No secrets in the config file.
@@ -19,11 +29,13 @@ The lab runs inside a Docker Compose environment on your assigned EC2 instance. 
 | `postgres` | Database with sample movie data |
 | `ollama` | Locally hosted LLM |
 | `client` | Node.js container — this is where you run the agent |
-| `auth-server` | Demo OIDC / enterprise IdP (required for Lab 3) |
-| `resource-server` | XAA-protected MCP server — todo list (required for Lab 3) |
-| `requesting-app` | XAA-aware requesting app + client provisioning (required for Lab 3) |
+| `auth-server` | Demo OIDC / enterprise IdP |
+| `resource-server` | XAA-protected MCP server — todo list |
+| `requesting-app` | XAA-aware requesting app + client provisioning |
 
 ## Getting Started
+
+***NOTE*** :: These instructions will assume the AWS hosted lab type. If you choose to self host these materials elsewhere, then it's assumed you have the skill to adjust the details of the technical steps to suit your needs in your hosting environment - whatever it may be.
 
 ### Connect to Your Lab Instance
 
@@ -34,6 +46,8 @@ aws ssm start-session --target <your_instance_id> \
   --document-name AWS-StartInteractiveCommand \
   --parameters command="cd ~ && exec bash -l"
 ```
+
+The value for `<your_instance_id>` will have been sent to you along with your hosted lab information. If you do not have that information, it means your resgitration for a hosted lab did not succeed on some level.
 
 ### Start the Lab
 
