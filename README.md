@@ -84,16 +84,21 @@ docker exec -it $CLIENT_CONTAINER bash
 
 All commands below run **inside the client container** unless noted otherwise.
 
-### Set Up the Agent (one-time)
+### Set Up the Chatbot (Agent) (one-time)
 
 ```bash
-cd ~
-git clone https://github.com/ausboss/mcp-ollama-agent
-git clone $WORKSHOP_REPO
-chmod +x xaa-mcp-stdio-linux-amd64
-cd mcp-ollama-agent/
+cd ~ && git clone https://github.com/ausboss/mcp-ollama-agent && git clone $WORKSHOP_REPO
+```
+```bash
+chmod +x xaa-mcp-stdio-linux-amd64 && cd mcp-ollama-agent/
+```
+```bash
 cp mcp-config.json ORIG.mcp-config.json
+```
+```bash
 cp ../$WORKSHOP_REPO_DIR/docker-compose-lab-mcp-config-files/WORKING.mcp-config.json mcp-config.json
+```
+```bash
 npm install
 ```
 
