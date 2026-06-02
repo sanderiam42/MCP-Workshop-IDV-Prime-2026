@@ -92,7 +92,7 @@ All commands below run **inside the client container** unless noted otherwise.
 cd ~ && git clone https://github.com/ausboss/mcp-ollama-agent && git clone $WORKSHOP_REPO
 ```
 ```bash
-../$WORKSHOP_REPO_DIR/apply-lab-config.sh
+bash ./$WORKSHOP_REPO_DIR/apply-lab-config.sh
 ```
 ```bash
 chmod +x xaa-mcp-stdio-linux-amd64 && cd mcp-ollama-agent/
@@ -116,9 +116,7 @@ npm start
 You are now in the agent chat UI talking to the locally hosted LLM. Try:
 
 ```
-you're going to use the "query" tool to get info about movies from the movies table
-in the database. when you call the "query" tool be sure you label the SQL as "sql"
-in the arguments so that it works correctly
+there is an MCP server for postgres in your environment. use it to select * from the movies table
 ```
 
 Exit with `Ctrl+C` when done.
@@ -127,6 +125,8 @@ Exit with `Ctrl+C` when done.
 
 ```bash
 cp ../$WORKSHOP_REPO_DIR/docker-compose-lab-mcp-config-files/SECRETWRAPPED.mcp-config.json mcp-config.json
+```
+```bash
 npm start
 ```
 
@@ -134,7 +134,7 @@ The same query works — but credentials are no longer in the config file. The M
 
 Exit with `Ctrl+C` when done.
 
-### Lab 3 — XAAIDJAG (XAA-protected resource)
+### Lab 3 — XAA / IDJAG (XAA-protected resource)
 
 First provision an OAuth client from the requesting app:
 
@@ -143,12 +143,42 @@ curl -s -X POST http://requesting-app:3000/api/clients/provision \
   -H "Content-Type: application/json" \
   -d '{"name": "Deadpool"}' | jq .
 ```
+You will get output that looks like this: 
+```json
+{
+  "auth": {
+    "client": {
+      "created_at": "2026-06-02T12:01:11.919192492Z",
+      "id": "deadpool-7TmXmKzT",
+      "name": "Deadpool",
+      "redirect_uri": "http://requesting-app:3000/callback"
+    }
+  },
+  "client_id": "deadpool-7TmXmKzT",
+  "client_secret": "yGfLI0bYVvZN62eM2Zeu0Q",
+  "resource": {
+    "client": {
+      "created_at": "2026-06-02T12:01:11.928551836Z",
+      "id": "deadpool-7TmXmKzT",
+      "name": "Deadpool",
+      "redirect_uri": "http://requesting-app:3000/callback"
+    }
+  }
+}
+```
+Save the returned `client_id` and `client_secret`. It needs to be put in the MCP client config.
 
-Save the returned `client_id` and `client_secret`. Then:
+Copy in the MCP config to be used for the XAA / IDJAG lab operations:
 
 ```bash
 cp ../$WORKSHOP_REPO_DIR/docker-compose-lab-mcp-config-files/XAAIDJAG.mcp-config.json mcp-config.json
-# edit client_id and client_secret into mcp-config.json
+```
+
+In the `mcp-config.json` file, find the client_id and client_secret placeholders and replace them with your retrieved values. 
+
+Start the chat again.
+
+```bash
 npm start
 ```
 
