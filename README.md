@@ -1,8 +1,10 @@
 # MCP Workshop Lab
 
-This repository is the hands-on lab environment for the **[AI + Identity Workshop at Identiverse 2026](https://identiverse.com/idv26/ai-identity-workshop/)** aka "The MCP Hackathon". Lab instances are pre-configured EC2 machines accessed via AWS CloudShell. All interaction with the LLM powered chat using MCP happens through a CLI chat interface.
+This repository is the hands-on lab environment for the **[AI + Identity Workshop at Identiverse 2026](https://identiverse.com/idv26/ai-identity-workshop/)** aka "The MCP Hackathon". Lab instances are pre-configured EC2 machines accessed via AWS CloudShell. All interaction with the LLM powered chat using MCP happens through a CLI chat interface. 
 
-## Credits for the contents of the lab
+***PLEASE NOTE*** This is all designed to be used in conjunction with the live lab instruction or by those who have been through the live sessions. Trying to use any of this without that will be... interesting. Stuff in these labs is broken in very specific ways on purpose to act as learning opportunities. 
+
+## Credits for the contents of the lab that do work
 
 The chat & MCP elements of the lab leverage the work of [@ausboos](https://github.com/ausboss) from the project [mcp-ollama-agent](https://github.com/ausboss/mcp-ollama-agent). Many props go out to that person for making this all possible. 
 
@@ -119,7 +121,7 @@ You are now in the agent chat UI talking to the locally hosted LLM. Try:
 there is an MCP server for postgres in your environment. use it to select * from the movies table
 ```
 
-Exit with `Ctrl+C` when done.
+Exit by typing `exit` at the prompt when done.
 
 ### Lab 2 — SECRETWRAPPED (secrets from AWS)
 
@@ -132,7 +134,7 @@ npm start
 
 The same query works — but credentials are no longer in the config file. The MCP secret wrapper fetches them from AWS Secrets Manager at runtime.
 
-Exit with `Ctrl+C` when done.
+Exit by typing `exit` at the prompt when done.
 
 ### Lab 3 — XAA / IDJAG (XAA-protected resource)
 
