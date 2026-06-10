@@ -24,14 +24,25 @@ docker exec -it __CLIENT_CONTAINER__ bash
 
 ## you are now working in one of the docker containers you started which is inside the lab
 cd ~
+
+# get all the required materials into the container
 git clone https://github.com/ausboss/mcp-ollama-agent
 git clone __WORKSHOP_REPO__
-../__WORKSHOP_REPO_DIR__/apply-lab-config.sh
+
+# apply lab config inside the container
+bash ~/__WORKSHOP_REPO_DIR__/apply-lab-config.sh
+
+# make the XAA binary executable
 chmod +x xaa-mcp-stdio-linux-amd64
+
 cd mcp-ollama-agent/
 cp mcp-config.json ORIG.mcp-config.json
 cp ../__WORKSHOP_REPO_DIR__/docker-compose-lab-mcp-config-files/WORKING.mcp-config.json mcp-config.json
+
+# ONLY RUN THIS ONCE
 npm install
+
+# starts the agent harness for the lab
 npm start
 
 ## after npm start you are in the chat UI of the mcp-ollama-agent talking to the LLM
