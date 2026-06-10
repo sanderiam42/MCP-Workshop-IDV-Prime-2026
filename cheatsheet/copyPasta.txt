@@ -1,13 +1,28 @@
-# on your cloudshell prompt - this gets you to your actual lab machine for the first steps
+## start on your cloudshell prompt - setting up for rest of lab
+
+# make sure your AWS session is sound
+aws sts get-caller-identity
+
+# this gets you to your actual lab machine for the first steps
 aws ssm start-session --target <your_instance_id> --document-name AWS-StartInteractiveCommand --parameters command="cd ~ && exec bash -l"
-cd __WORKSHOP_REPO_DIR__
-grep core docker-compose.yml
-./start-lab.sh --build -d
-aws s3 cp s3://mcp-lab-instance-setup/xaa-mcp-stdio-linux-amd64 ./bin/xaa-mcp-stdio-linux-amd64
-docker cp ./bin/xaa-mcp-stdio-linux-amd64 __CLIENT_CONTAINER__:/root/
+
+## you are now on the main host machine for the lab where the docker containers will run
+ls -al
+cd MCP[TAB]
+
+# this will apply your individual config to the files
+bash apply-lab-config.sh
+
+# this now has the real commands to copy and paste - you can use this command multiple times as needed
+cat ~/MCP-Workshop-IDV-Prime-2026/cheatsheet/copyPasta.txt
+
+# this will start all the docker containers and do other maintenance
+bash start-lab.sh --build -d
+
+# this puts you into the main lab machine to use for actual MCP steps
 docker exec -it __CLIENT_CONTAINER__ bash
 
-# you are now working in one of the docker containers you started which is inside the lab
+## you are now working in one of the docker containers you started which is inside the lab
 cd ~
 git clone https://github.com/ausboss/mcp-ollama-agent
 git clone __WORKSHOP_REPO__
@@ -19,7 +34,15 @@ cp ../__WORKSHOP_REPO_DIR__/docker-compose-lab-mcp-config-files/WORKING.mcp-conf
 npm install
 npm start
 
-# after npm start you are in the chat UI of the mcp-ollama-agent talking to the LLM
+## after npm start you are in the chat UI of the mcp-ollama-agent talking to the LLM
+
+# prompt v1 - about 20% chance of success
+the postgres database has a table with movies in it which you are going to run select * on and give me a neatly formatted list of the details about movies there.
+
+# prompt v2 - about 65% chance of success
+there is an MCP server for a postgres database you have access to. in that database there's a table named movies and you're going to run select * on and give me a neatly formatted list of the details about movies there.
+
+# prompt from the llama LLM from previous lab versions - about 72% chance of success with that model
 you're going to use the "query" tool to get info about movies from the movies table in the database. when you call the "query" tool be sure you lable the SQL as "sql" in the arguments so that it works correctly
 
 # you are back at the command prompt of the container's OS, and swapping in new MCP client configs
