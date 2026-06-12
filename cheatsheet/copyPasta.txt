@@ -1,3 +1,5 @@
+### Prep steps
+
 ## start on your cloudshell prompt - setting up for rest of lab
 
 # make sure your AWS session is sound
@@ -9,8 +11,9 @@ aws ssm start-session --target <your_instance_id> --document-name AWS-StartInter
 ## you are now on the main host machine for the lab where the docker containers will run
 ls -al
 cd MCP[TAB]
+git pull
 
-# this will apply your individual config to the files
+# this will apply your individual config to the files - you will get an error about not being in the container which is expected
 bash apply-lab-config.sh
 
 # this now has the real commands to copy and paste - you can use this command multiple times as needed
@@ -22,6 +25,8 @@ bash start-lab.sh --build -d
 # this puts you into the main lab machine to use for actual MCP steps
 docker exec -it __CLIENT_CONTAINER__ bash
 
+### Start Lab 1
+
 ## you are now working in one of the docker containers you started which is inside the lab
 cd ~
 
@@ -31,9 +36,6 @@ git clone __WORKSHOP_REPO__
 
 # apply lab config inside the container
 bash ~/__WORKSHOP_REPO_DIR__/apply-lab-config.sh
-
-# make the XAA binary executable
-chmod +x xaa-mcp-stdio-linux-amd64
 
 cd mcp-ollama-agent/
 cp mcp-config.json ORIG.mcp-config.json
@@ -56,13 +58,100 @@ there is an MCP server for a postgres database you have access to. in that datab
 # prompt from the llama LLM from previous lab versions - about 72% chance of success with that model
 you're going to use the "query" tool to get info about movies from the movies table in the database. when you call the "query" tool be sure you lable the SQL as "sql" in the arguments so that it works correctly
 
+exit
+### End Lab 1
+
+### Start Lab 2
+
+## you are still working in one of the docker containers you started which is inside the lab
+
+# you may need to repeat some steps to re-enter the same environment if the connection to the AWS side timed out - which is very likely 
+
 # you are back at the command prompt of the container's OS, and swapping in new MCP client configs
 cp ../__WORKSHOP_REPO_DIR__/cheatsheet/BROKEN.mcp-config.json ./mcp-config.json
 cp ../__WORKSHOP_REPO_DIR__/docker-compose-lab-mcp-config-files/SECRETWRAPPED.mcp-config.json mcp-config.json
+
 cp ../__WORKSHOP_REPO_DIR__/cheatsheet/SUPPLIEDSECRET.mcp-config.json mcp-config.json
+
+# starts the agent harness for the lab
+npm start
+
+# you will try the same prompts from Lab 1 here, but now using the vaulted secret
+
+exit
+### End Lab 2
+
+### Start Lab 3
+
+## you are still working in one of the docker containers you started which is inside the lab
+
+# you may need to repeat some steps to re-enter the same environment if the connection to the AWS side timed out - which is very likely 
+
+# make the XAA binary executable - this is a rust binary that is the "toy" IdP which supports XAA/ID-JAG
+chmod +x xaa-mcp-stdio-linux-amd64
 
 # you need to get your IdP's client ID and secret
 curl -s -X POST http://requesting-app:3000/api/clients/provision -H "Content-Type: application/json" -d '{"name": "Deadpool"}' | jq .
+
 cp ../__WORKSHOP_REPO_DIR__/docker-compose-lab-mcp-config-files/XAAIDJAG.mcp-config.json mcp-config.json
 
 # you need to take the values of the client ID and secret and edit them into the mcp-config.json
+
+# starts the agent harness for the lab
+npm start
+
+# now you will try to get the LLM to use this new tool to retrieve or set todo values.
+
+### Bonus: step-by-step curl walk of the XAA flow (from inside the client container) - if the LLM is being testy but you want to play with the XAA flow anyway this is for you
+
+## this performs the same three-step token chain the Lab 3 agent does, but by hand
+
+# it reuses the Deadpool client you provisioned at the top of Lab 3 — paste the same client_id and client_secret values you put into mcp-config.json
+export CLIENT_ID="<your-client-id-from-lab-3>"
+export CLIENT_SECRET="<your-client-secret-from-lab-3>"
+
+# now you create the BASIC AuthN to be used by the curl calls using those creds
+export BASIC=$(echo -n "${CLIENT_ID}:${CLIENT_SECRET}" | base64)
+
+# Step 1 — client credentials grant → ID token (machine identity, sub=client_id)
+export ID_TOKEN=$(curl -s -X POST http://auth-server:8081/token \
+  -H "Authorization: Basic ${BASIC}" \
+  -H "Content-Type: application/x-www-form-urlencoded" \
+  -d "grant_type=client_credentials" \
+  -d "scope=mcp:read mcp:write" | jq -r '.id_token')
+
+# Step 2 — token exchange → ID-JAG (cross-app authorization grant)
+# audience/resource must match RESOURCE_SERVER_ORIGIN in .env (container mode)
+export ID_JAG=$(curl -s -X POST http://auth-server:8081/token \
+  -H "Authorization: Basic ${BASIC}" \
+  -H "Content-Type: application/x-www-form-urlencoded" \
+  -d "grant_type=urn:ietf:params:oauth:grant-type:token-exchange" \
+  -d "subject_token=${ID_TOKEN}" \
+  -d "subject_token_type=urn:ietf:params:oauth:token-type:id_token" \
+  -d "requested_token_type=urn:ietf:params:oauth:token-type:id-jag" \
+  -d "audience=http://resource-server:8082" \
+  -d "resource=http://resource-server:8082/mcp" \
+  -d "scope=mcp:read mcp:write" | jq -r '.access_token')
+
+# Step 3 — JWT bearer → resource access token
+export ACCESS_TOKEN=$(curl -s -X POST http://resource-server:8082/oauth/token \
+  -H "Authorization: Basic ${BASIC}" \
+  -H "Content-Type: application/x-www-form-urlencoded" \
+  -d "grant_type=urn:ietf:params:oauth:grant-type:jwt-bearer" \
+  -d "assertion=${ID_JAG}" \
+  -d "scope=mcp:read mcp:write" | jq -r '.access_token')
+
+# Step 4 — call an MCP tool directly with the access token
+curl -s -X POST http://resource-server:8082/mcp \
+  -H "Authorization: Bearer ${ACCESS_TOKEN}" \
+  -H "Content-Type: application/json" \
+  -d '{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"list_todos","arguments":{}}}' | jq .
+
+# Same call via the requesting-app bridge — performs all three steps automatically
+curl -s -X POST http://requesting-app:3000/host/mcp \
+  -H "Content-Type: application/json" \
+  -H "X-Demo-Client: ${CLIENT_ID}" \
+  -H "X-Demo-Client-Secret: ${CLIENT_SECRET}" \
+  -d '{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"list_todos","arguments":{}}}' | jq .
+
+### End Bonus
