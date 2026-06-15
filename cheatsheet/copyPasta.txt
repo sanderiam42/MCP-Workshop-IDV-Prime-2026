@@ -88,7 +88,7 @@ exit
 # you may need to repeat some steps to re-enter the same environment if the connection to the AWS side timed out - which is very likely 
 
 # make the XAA binary executable - this is a rust binary that is the "toy" IdP which supports XAA/ID-JAG
-chmod +x xaa-mcp-stdio-linux-amd64
+chmod +x ~/xaa-mcp-stdio-linux-amd64
 
 # you need to get your IdP's client ID and secret
 curl -s -X POST http://requesting-app:3000/api/clients/provision -H "Content-Type: application/json" -d '{"name": "Deadpool"}' | jq .
